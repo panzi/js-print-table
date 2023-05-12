@@ -1,0 +1,24 @@
+{
+  "name": "printtable",
+  "version": "1.0.0",
+  "description": "Print tabular data in a nice table.",
+  "main": "./build/index.js",
+  "types": "./build/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "tsc": "tsc",
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "print",
+    "format",
+    "table"
+  ],
+  "author": "Mathias Panzenböck",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.1.3",
+    "typescript": "^5.0.4"
+  }
+}
