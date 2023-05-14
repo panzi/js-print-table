@@ -18,7 +18,7 @@ const ColorReset   = '\u001b[0m';
 // const ColorBlack   = '\u001b[30m';
 const ColorRed     = '\u001b[31m';
 const ColorGreen   = '\u001b[32m';
-// const ColorYellow  = '\u001b[33m';
+const ColorYellow  = '\u001b[33m';
 const ColorBlue    = '\u001b[34m';
 const ColorMagenta = '\u001b[35m';
 const ColorCyan    = '\u001b[36m';
@@ -47,9 +47,19 @@ const IgnoreRegExp = /\p{Nonspacing_Mark}|\p{Default_Ignorable_Code_Point}|\p{Co
 // \u{20000}-\u{323AF} CJK Unified Ideographs Extensions
 // \u{FF01}-\u{FF60} asian full-width characters
 // \u{FFE0}-\u{FFE6} asian full-width characters
-const DoubleWidthRegExp = /\p{Emoji_Presentation}|[\u{3040}-\u{A4CF}|\u{AC00}-\u{D7FF}\u{20000}-\u{323AF}\u{FF01}-\u{FF60}\u{FFE0}-\u{FFE6}]/gu;
+const DoubleWidthRegExp = /\p{Emoji_Presentation}|[\u{3040}-\u{A4CF}|\u{AC00}-\u{D7FF}\u{20000}-\u{323AF}\u{FF01}-\u{FF60}\u{FFE0}-\u{FFE6}\0\r\v\f\x1b]/gu;
 
 const SurrogatePairRegExp = /[\u{D800}-\u{10FFFF}]/gu;
+
+const CharReplacement = {
+    '\0': '\\0',
+    '\r': '\\r', // '^M',
+    '\v': '\\v', // '^K',
+    '\f': '\\f', // '^L',
+    '\u001b': '\\e', // '^[',
+};
+
+const EscapedCharsRegExp = /[\0\r\v\f\x1b]/g;
 
 export function formatTable({ header, body, alignment, color, separateRows, separateColumns }: FormatTableOptions): string[] {
     const maxlens: number[] = [];
@@ -115,12 +125,12 @@ export function formatTable({ header, body, alignment, color, separateRows, sepa
                 cell instanceof Date ? cell.toISOString() :
                 typeof cell === 'object' ? JSON.stringify(cell, null, 4) :
                 String(cell)
-            ).replaceAll('\t', '    ').replaceAll('\r', '\\r').split('\n');
+            ).replaceAll('\t', '    ').split('\n');
 
             let cellMaxlen = 0;
             const lines: ProcessedLine[] = [];
             for (const line of rawLines) {
-                const cleanLine = line.replace(IgnoreRegExp, '').replace(DoubleWidthRegExp, 'XX').replace(SurrogatePairRegExp, 'x');
+                const cleanLine = line.replace(DoubleWidthRegExp, 'XX').replace(IgnoreRegExp, '').replace(SurrogatePairRegExp, 'x');
                 const len = cleanLine.length;
                 if (len > cellMaxlen) {
                     cellMaxlen = len;
@@ -144,6 +154,26 @@ export function formatTable({ header, body, alignment, color, separateRows, sepa
                     }
                     item.line = line + ' '.repeat(cellMaxlen - item.length);
                     item.length = cellMaxlen;
+                }
+            } else if (typeof cell === 'string') {
+                if (color) {
+                    for (const item of lines) {
+                        item.line = item.line.replace(EscapedCharsRegExp, ch => ColorYellow + CharReplacement[ch] + ColorReset);
+                    }
+                } else {
+                    for (const item of lines) {
+                        item.line = item.line.replace(EscapedCharsRegExp, ch => CharReplacement[ch]);
+                    }
+                }
+            } else if (typeof cell === 'symbol') {
+                if (color) {
+                    for (const item of lines) {
+                        item.line = item.line.replace(EscapedCharsRegExp, ch => ColorYellow + CharReplacement[ch] + symbolColor);
+                    }
+                } else {
+                    for (const item of lines) {
+                        item.line = item.line.replace(EscapedCharsRegExp, ch => CharReplacement[ch]);
+                    }
                 }
             }
 
