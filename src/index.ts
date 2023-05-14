@@ -120,6 +120,32 @@ export const DefaultTableStyle: Readonly<TableStyle> = {
     outlineNoBorderCrossing: '──',
 };
 
+export const SpaceTableStyle: Readonly<TableStyle> = {
+    columnBorder: '  ',
+    columnNoBorder: '  ',
+    paddingChar: ' ',
+    leftOutline: ' ',
+    rightOutline: ' ',
+    topOutlineColumnBorder: '  ',
+    borderCrossing: '  ',
+    noBorderCrossing: '  ',
+    bottomOutlineColumnBorder: '  ',
+    topLeftOutline:     ' ',
+    bottomLeftOutline:  ' ',
+    topRightOutline:    ' ',
+    bottomRightOutline: ' ',
+    rowBorder: ' ',
+    horizontalOutline: ' ',
+    leftOutlineRowBorder:  ' ',
+    rightOutlineRowBorder: ' ',
+    leftHeaderRowBorder:   ' ',
+    rightHeaderRowBorder:  ' ',
+    headerBorder: ' ',
+    headerBorderCrossing: '  ',
+    headerNoBorderCrossing: '  ',
+    outlineNoBorderCrossing: '  ',
+};
+
 export const AsciiTableStyle: Readonly<TableStyle> = {
     columnBorder: ' | ',
     columnNoBorder: '  ',
