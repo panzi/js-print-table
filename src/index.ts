@@ -115,14 +115,65 @@ export function formatTable({ header, body, alignment, color, separateRows, sepa
                             ++ charIndex;
                         }
                     }
-                    // TODO: handle *all* diacritics and other zero width stuff etc. There is *much* more than these.
+                    // There is *much* more than these things, it is all hacky,
+                    // and depends very much on however your terminal/edotir renders things.
                     if (codepoint <= 0xFF) {
                         // ASCII + latin 1
                         ++ len;
-                    } else if (codepoint >= 0x1F600 && codepoint <= 0x1F64F) {
-                        // emojis
+                    } else if (
+                        // emojis (very much not exact)
+                        ((codepoint >= 0x0231A && codepoint <= 0x01F9FF) && (
+                            (                        codepoint <= 0x0231B) ||
+                            (codepoint >= 0x023E9 && codepoint <= 0x023FA) ||
+                            (codepoint >= 0x02614 && codepoint <= 0x02615) ||
+                            codepoint === 0x0267F ||
+                            (codepoint >= 0x02648 && codepoint <= 0x02653) ||
+                            codepoint === 0x02657 ||
+                            codepoint === 0x026A1 ||
+                            (codepoint >= 0x026BD && codepoint <= 0x026BE) ||
+                            (codepoint >= 0x026C4 && codepoint <= 0x026C5) ||
+                            codepoint === 0x026CE ||
+                            codepoint === 0x026D4 ||
+                            codepoint === 0x026EA ||
+                            (codepoint >= 0x026EC && codepoint <= 0x026EB) ||
+                            codepoint === 0x026F2 ||
+                            codepoint === 0x026F3 ||
+                            codepoint === 0x026F5 ||
+                            codepoint === 0x026FA ||
+                            codepoint === 0x026FD ||
+                            codepoint === 0x02705 ||
+                            codepoint === 0x0270A ||
+                            codepoint === 0x0270B ||
+                            (codepoint >= 0x02934 && codepoint <= 0x02935) ||
+                            (codepoint >= 0x02B1B && codepoint <= 0x02B1C) ||
+                            (codepoint >= 0x1F170 && codepoint <= 0x1F6F9 && codepoint !== 0x1F3F3) ||
+                            (codepoint >= 0x1F910) )) ||
+
+                        // asian scripts
+                        (
+                            // XXX: I don't really know. guessed stuff
+                            (codepoint >= 0x3040 && codepoint <= 0xA4CF) ||
+
+                            // Korean Hangul
+                            (codepoint >= 0xAC00 && codepoint <= 0xD7FF) ||
+
+                            // CJK Unified Ideographs Extensions
+                            (codepoint >= 0x20000 && codepoint <= 0x323AF)
+                        ) ||
+
+                        // asian full-width characters
+                        (
+                            (codepoint >= 0xFF01 && codepoint <= 0xFF60) ||
+                            (codepoint >= 0xFFE0 && codepoint <= 0xFFE6)
+                        ) ||
+
+                        // Devanagari letter (Hindi) TODO: still not correct
+                        (codepoint >= 0x0934 && codepoint <= 0x0939)
+                    ) {
                         len += 2;
                     } else if (
+                        // TODO: would need all Mn codepoints, but there are so many!
+
                         // diacritics
                         codepoint !== 0x032A &&
                         !(codepoint >= 0x0346 && codepoint <= 0x034E) &&
@@ -130,6 +181,16 @@ export function formatTable({ header, body, alignment, color, separateRows, sepa
                         !(codepoint >= 0x1AB0 && codepoint <= 0x1AFF) &&
                         !(codepoint >= 0x1DC0 && codepoint <= 0x1DFF) &&
                         !(codepoint >= 0x20D0 && codepoint <= 0x20FF) &&
+
+                        // Arabic (most likely incomplete)
+                        !(codepoint >= 0x064B && codepoint <= 0x0657) &&
+                        !(codepoint >= 0x0659 && codepoint <= 0x065F) &&
+
+                        // Devanagari vowel signs (Hindi) TODO: still not correct
+                        !(codepoint >= 0x08E3 && codepoint <= 0x0902) &&
+                        !(codepoint >= 0x093A && codepoint <= 0x093B) &&
+                        !(codepoint >= 0x093E && codepoint <= 0x094F) &&
+                        !(codepoint == 0xA8E0 || codepoint == 0xA8F1) &&
 
                         // variant selectors
                         !(codepoint >= 0xFE00 && codepoint <= 0xFE0F) &&
