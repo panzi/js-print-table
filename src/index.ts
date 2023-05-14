@@ -13,6 +13,7 @@ export type FormatTableOptions = {
 
 const AlignRegExp = /^[- .<>]*$/;
 const JsonLexRegExp = /("(?:\\["\\]|[^"])*")|(\btrue\b|\bfalse\b)|(\bnull\b)|(-?[0-9]+(?:\.[0-9]*)?(?:[eE][-+]?[0-9]+)?)/g;
+const JsonEscapeRegExp = /\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4})/g;
 
 const WeightBold   = '\u001b[1m';
 const ColorReset   = '\u001b[0m';
@@ -198,6 +199,7 @@ export function formatTable(body: Table, { header, alignment, color, outline, ro
     const symbolColor  = color ? ColorRed     : '';
     const stringColor  = color ? ColorMagenta : '';
     const funcColor    = color ? ColorCyan    : '';
+    const escapeColor  = color ? ColorYellow  : '';
 
     function processRow(row: ReadonlyArray<unknown>): ProcessedCell[] {
         const processedRow: ProcessedCell[] = [];
@@ -271,7 +273,7 @@ export function formatTable(body: Table, { header, alignment, color, outline, ro
                     let { line } = item;
                     if (color) {
                         line = line.replace(JsonLexRegExp, (all, str, bool, nul, num) => {
-                            if (str) return stringColor + all + ColorReset;
+                            if (str) return stringColor + all.replace(JsonEscapeRegExp, esc => escapeColor + esc + stringColor) + ColorReset;
                             if (nul) return nullColor + all + ColorReset;
                             return numberColor + all + ColorReset;
                         });
@@ -283,7 +285,7 @@ export function formatTable(body: Table, { header, alignment, color, outline, ro
                 if (color) {
                     for (const item of lines) {
                         item.line = item.line.
-                            replace(SpecialCharRegExp, (_, esc, contr) => ColorYellow + (esc ? CharReplacement[esc] : '\\u' + contr.charCodeAt(0).toString(16).padStart(4, '0')) + ColorReset);
+                            replace(SpecialCharRegExp, (_, esc, contr) => escapeColor + (esc ? CharReplacement[esc] : '\\u' + contr.charCodeAt(0).toString(16).padStart(4, '0')) + ColorReset);
                     }
                 } else {
                     for (const item of lines) {
@@ -295,7 +297,7 @@ export function formatTable(body: Table, { header, alignment, color, outline, ro
                 if (color) {
                     for (const item of lines) {
                         item.line = item.line.
-                            replace(SpecialCharRegExp, (_, esc, contr) => ColorYellow + (esc ? CharReplacement[esc] : '\\u' + contr.charCodeAt(0).toString(16).padStart(4, '0')) + symbolColor);
+                            replace(SpecialCharRegExp, (_, esc, contr) => escapeColor + (esc ? CharReplacement[esc] : '\\u' + contr.charCodeAt(0).toString(16).padStart(4, '0')) + symbolColor);
                     }
                 } else {
                     for (const item of lines) {
