@@ -9,6 +9,7 @@ export type FormatTableOptions = {
     readonly columnBorders?: boolean,
     readonly outline?: boolean,
     readonly style?: Partial<Readonly<TableStyle>>,
+    readonly raw?: boolean,
 };
 
 const AlignRegExp = /^[- .<>]*$/;
@@ -49,7 +50,7 @@ const IgnoreRegExp = /\p{Nonspacing_Mark}|\p{Default_Ignorable_Code_Point}|[\u{F
 // \u{20000}-\u{323AF} CJK Unified Ideographs Extensions
 // \u{FF01}-\u{FF60} asian full-width characters
 // \u{FFE0}-\u{FFE6} asian full-width characters
-const DoubleWidthRegExp = /\p{Emoji_Presentation}|[\u{3040}-\u{A4CF}|\u{AC00}-\u{D7FF}\u{20000}-\u{323AF}\u{FF01}-\u{FF60}\u{FFE0}-\u{FFE6}\0\r\v\f]/gu;
+const DoubleWidthRegExp = /\p{Emoji_Presentation}|[\u{3040}-\u{A4CF}\u{AC00}-\u{D7FF}\u{20000}-\u{323AF}\u{FF01}-\u{FF60}\u{FFE0}-\u{FFE6}\0\r\v\f]/gu;
 
 const SurrogatePairRegExp = /[\u{D800}-\u{10FFFF}]/gu;
 
@@ -63,6 +64,9 @@ const CharReplacement = {
 };
 
 const SpecialCharRegExp = /([\0\r\v\f])|(\p{Control})/gu;
+
+// TODO: match more ANSI escape sequences
+const AnsiEscapeRegExp = /\u001b\[\d+(?:;\d+)*m/gu;
 
 export interface TableStyle {
     columnBorder: string;
@@ -79,6 +83,7 @@ export interface TableStyle {
     topRightOutline: string;
     bottomRightOutline: string;
     rowBorder: string;
+    horizontalOutline: string;
     leftOutlineRowBorder: string;
     rightOutlineRowBorder: string;
     leftHeaderRowBorder: string;
@@ -86,6 +91,7 @@ export interface TableStyle {
     headerBorder: string;
     headerBorderCrossing: string;
     headerNoBorderCrossing: string;
+    outlineNoBorderCrossing: string;
 }
 
 export const DefaultTableStyle: Readonly<TableStyle> = {
@@ -103,6 +109,7 @@ export const DefaultTableStyle: Readonly<TableStyle> = {
     topRightOutline:    '─┐',
     bottomRightOutline: '─┘',
     rowBorder: '─',
+    horizontalOutline: '─',
     leftOutlineRowBorder:  '├─',
     rightOutlineRowBorder: '─┤',
     leftHeaderRowBorder:   '╞═',
@@ -110,6 +117,7 @@ export const DefaultTableStyle: Readonly<TableStyle> = {
     headerBorder: '═',
     headerBorderCrossing: '═╪═',
     headerNoBorderCrossing: '══',
+    outlineNoBorderCrossing: '──',
 };
 
 export const AsciiTableStyle: Readonly<TableStyle> = {
@@ -127,6 +135,7 @@ export const AsciiTableStyle: Readonly<TableStyle> = {
     topRightOutline:    '-+',
     bottomRightOutline: '-+',
     rowBorder: '-',
+    horizontalOutline: '-',
     leftOutlineRowBorder:  '+-',
     rightOutlineRowBorder: '-+',
     leftHeaderRowBorder:   '|=',
@@ -134,14 +143,59 @@ export const AsciiTableStyle: Readonly<TableStyle> = {
     headerBorder: '=',
     headerBorderCrossing: '===',
     headerNoBorderCrossing: '==',
+    outlineNoBorderCrossing: '--',
 };
 
-export const RoundedTableStyle: Readonly<TableStyle> = {
-    ...DefaultTableStyle,
+export const RoundedTableStyle: Partial<Readonly<TableStyle>> = {
     topLeftOutline:     '╭─',
     bottomLeftOutline:  '╰─',
     topRightOutline:    '─╮',
     bottomRightOutline: '─╯',
+};
+
+export const FatHeaderBorderTableStyle: Partial<Readonly<TableStyle>> = {
+    leftHeaderRowBorder:   '┝━',
+    rightHeaderRowBorder:  '━┥',
+    headerBorder: '━',
+    headerBorderCrossing: '━┿━',
+    headerNoBorderCrossing: '━━',
+};
+
+export const DoubleOutlineTableStyle: Partial<Readonly<TableStyle>> = {
+    leftOutline: '║ ',
+    rightOutline: ' ║',
+    topOutlineColumnBorder:    '═╤═',
+    bottomOutlineColumnBorder: '═╧═',
+    topLeftOutline:     '╔═',
+    bottomLeftOutline:  '╚═',
+    topRightOutline:    '═╗',
+    bottomRightOutline: '═╝',
+    horizontalOutline: '═',
+    leftOutlineRowBorder:  '╟─',
+    rightOutlineRowBorder: '─╢',
+    leftHeaderRowBorder:   '╠═',
+    rightHeaderRowBorder:  '═╣',
+    outlineNoBorderCrossing: '══',
+};
+
+export const FatOutlineTableStyle: Partial<Readonly<TableStyle>> = {
+    leftOutline: '┃ ',
+    rightOutline: ' ┃',
+    topOutlineColumnBorder:    '━┯━',
+    bottomOutlineColumnBorder: '━┷━',
+    topLeftOutline:     '┏━',
+    bottomLeftOutline:  '┗━',
+    topRightOutline:    '━┓',
+    bottomRightOutline: '━┛',
+    horizontalOutline: '━',
+    leftOutlineRowBorder:  '┠─',
+    rightOutlineRowBorder: '─┨',
+    leftHeaderRowBorder:   '┣━',
+    rightHeaderRowBorder:  '━┫',
+    headerBorder: '━',
+    headerBorderCrossing: '━┿━',
+    headerNoBorderCrossing: '━━',
+    outlineNoBorderCrossing: '━━',
 };
 
 const DefaultOptions: FormatTableOptions = {
@@ -153,7 +207,7 @@ const DefaultOptions: FormatTableOptions = {
 
 export type Table = ReadonlyArray<ReadonlyArray<unknown>>;
 
-export function formatTable(body: Table, { header, alignment, color, outline, rowBorders, columnBorders, style }: FormatTableOptions = DefaultOptions): string[] {
+export function formatTable(body: Table, { header, alignment, color, outline, rowBorders, columnBorders, style, raw }: FormatTableOptions = DefaultOptions): string[] {
     const maxlens: number[] = [];
     const alignfmt = alignment ?? '';
     const processed: ProcessedCell[][] = [];
@@ -179,6 +233,7 @@ export function formatTable(body: Table, { header, alignment, color, outline, ro
         topRightOutline,
         bottomRightOutline,
         rowBorder,
+        horizontalOutline,
         leftOutlineRowBorder,
         rightOutlineRowBorder,
         leftHeaderRowBorder,
@@ -186,6 +241,7 @@ export function formatTable(body: Table, { header, alignment, color, outline, ro
         headerBorder,
         headerBorderCrossing,
         headerNoBorderCrossing,
+        outlineNoBorderCrossing,
     } = style ? { ...DefaultTableStyle, ...style } : DefaultTableStyle;
 
     if (color === undefined) {
@@ -256,7 +312,13 @@ export function formatTable(body: Table, { header, alignment, color, outline, ro
             let cellMaxlen = 0;
             const lines: ProcessedLine[] = [];
             for (const line of rawLines) {
-                const cleanLine = line.replace(DoubleWidthRegExp, 'XX').replace(IgnoreRegExp, '').replace(ControlRegExp, '\\u####').replace(SurrogatePairRegExp, 'x');
+                let cleanLine = line.replace(DoubleWidthRegExp, 'XX').replace(IgnoreRegExp, '');
+                if (raw) {
+                    cleanLine = cleanLine.replace(AnsiEscapeRegExp, '');
+                } else {
+                    cleanLine = cleanLine.replace(ControlRegExp, '\\u####');
+                }
+                cleanLine = cleanLine.replace(SurrogatePairRegExp, 'x');
                 const len = cleanLine.length;
                 if (len > cellMaxlen) {
                     cellMaxlen = len;
@@ -282,27 +344,31 @@ export function formatTable(body: Table, { header, alignment, color, outline, ro
                     item.length = cellMaxlen;
                 }
             } else if (typeof cell === 'string') {
-                if (color) {
-                    for (const item of lines) {
-                        item.line = item.line.
-                            replace(SpecialCharRegExp, (_, esc, contr) => escapeColor + (esc ? CharReplacement[esc] : '\\u' + contr.charCodeAt(0).toString(16).padStart(4, '0')) + ColorReset);
-                    }
-                } else {
-                    for (const item of lines) {
-                        item.line = item.line.
-                            replace(SpecialCharRegExp, (_, esc, contr) => esc ? CharReplacement[esc] : '\\u' + contr.charCodeAt(0).toString(16).padStart(4, '0'));
+                if (!raw) {
+                    if (color) {
+                        for (const item of lines) {
+                            item.line = item.line.
+                                replace(SpecialCharRegExp, (_, esc, contr) => escapeColor + (esc ? CharReplacement[esc] : '\\u' + contr.charCodeAt(0).toString(16).padStart(4, '0')) + ColorReset);
+                        }
+                    } else {
+                        for (const item of lines) {
+                            item.line = item.line.
+                                replace(SpecialCharRegExp, (_, esc, contr) => esc ? CharReplacement[esc] : '\\u' + contr.charCodeAt(0).toString(16).padStart(4, '0'));
+                        }
                     }
                 }
             } else if (typeof cell === 'symbol') {
-                if (color) {
-                    for (const item of lines) {
-                        item.line = item.line.
-                            replace(SpecialCharRegExp, (_, esc, contr) => escapeColor + (esc ? CharReplacement[esc] : '\\u' + contr.charCodeAt(0).toString(16).padStart(4, '0')) + symbolColor);
-                    }
-                } else {
-                    for (const item of lines) {
-                        item.line = item.line.
-                            replace(SpecialCharRegExp, (_, esc, contr) => esc ? CharReplacement[esc] : '\\u' + contr.charCodeAt(0).toString(16).padStart(4, '0'));
+                if (!raw) {
+                    if (color) {
+                        for (const item of lines) {
+                            item.line = item.line.
+                                replace(SpecialCharRegExp, (_, esc, contr) => escapeColor + (esc ? CharReplacement[esc] : '\\u' + contr.charCodeAt(0).toString(16).padStart(4, '0')) + symbolColor);
+                        }
+                    } else {
+                        for (const item of lines) {
+                            item.line = item.line.
+                                replace(SpecialCharRegExp, (_, esc, contr) => esc ? CharReplacement[esc] : '\\u' + contr.charCodeAt(0).toString(16).padStart(4, '0'));
+                        }
                     }
                 }
             }
@@ -327,20 +393,25 @@ export function formatTable(body: Table, { header, alignment, color, outline, ro
     function alignRow(row: ProcessedCell[]): string[] {
         const grid: string[][] = [];
 
+        let maxLines = 0;
+        for (const cell of row) {
+            const lineCount = cell.lines.length;
+            if (lineCount > maxLines) {
+                maxLines = lineCount;
+            }
+        }
+
+        for (let lineIndex = 0; lineIndex < maxLines; ++ lineIndex) {
+            grid.push([]);
+        }
+
         for (let cellIndex = 0; cellIndex < row.length; ++ cellIndex) {
             const maxlen = maxlens[cellIndex];
             const { align, lines, color } = row[cellIndex];
             const lineslen = lines.length;
 
-            while (lineslen > grid.length) {
-                const line: string[] = [];
-                while (line.length < cellIndex) {
-                    line.push(' '.repeat(maxlens[line.length]));
-                }
-                grid.push(line);
-            }
-
-            for (let lineIndex = 0; lineIndex < lineslen; ++ lineIndex) {
+            let lineIndex = 0
+            for (; lineIndex < lineslen; ++ lineIndex) {
                 const item = lines[lineIndex];
                 let { line } = item;
 
@@ -363,6 +434,13 @@ export function formatTable(body: Table, { header, alignment, color, outline, ro
 
                 grid[lineIndex][cellIndex] = line;
             }
+
+            if (lineIndex < maxLines) {
+                const padding = paddingChar.repeat(maxlen);
+                for (; lineIndex < maxLines; ++ lineIndex) {
+                    grid[lineIndex][cellIndex] = padding;
+                }
+            }
         }
 
         return grid.map(line => {
@@ -376,12 +454,12 @@ export function formatTable(body: Table, { header, alignment, color, outline, ro
 
     const lines: string[] = [];
 
-    const hdrColSep = columnBorders ? topOutlineColumnBorder    : noBorderCrossing;
+    const hdrColSep = columnBorders ? topOutlineColumnBorder    : outlineNoBorderCrossing;
     const midColSep = columnBorders ? borderCrossing            : noBorderCrossing;
-    const ftrColSep = columnBorders ? bottomOutlineColumnBorder : noBorderCrossing;
+    const ftrColSep = columnBorders ? bottomOutlineColumnBorder : outlineNoBorderCrossing;
 
     if (outline) {
-        lines.push(topLeftOutline + maxlens.map(len => rowBorder.repeat(len)).join(hdrColSep) + topRightOutline);
+        lines.push(topLeftOutline + maxlens.map(len => horizontalOutline.repeat(len)).join(hdrColSep) + topRightOutline);
     }
 
     const sepMid = maxlens.map(len => rowBorder.repeat(len)).join(midColSep);
@@ -426,7 +504,7 @@ export function formatTable(body: Table, { header, alignment, color, outline, ro
     }
 
     if (outline) {
-        lines.push(bottomLeftOutline + maxlens.map(len => rowBorder.repeat(len)).join(ftrColSep) + bottomRightOutline);
+        lines.push(bottomLeftOutline + maxlens.map(len => horizontalOutline.repeat(len)).join(ftrColSep) + bottomRightOutline);
     }
 
     return lines;
