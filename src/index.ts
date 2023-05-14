@@ -2,15 +2,16 @@ type ProcessedLine = { length: number, line: string };
 type ProcessedCell = { align: string, lines: ProcessedLine[], color: string };
 
 export type FormatTableOptions = {
-    header?: unknown[],
-    body: unknown[][],
-    alignment?: string,
-    color?: boolean,
-    separateRows?: boolean,
-    separateColumns?: boolean,
+    readonly header?: ReadonlyArray<unknown>,
+    readonly alignment?: string,
+    readonly color?: boolean,
+    readonly rowBorders?: boolean,
+    readonly columnBorders?: boolean,
+    readonly outline?: boolean,
+    readonly style?: Partial<Readonly<TableStyle>>,
 };
 
-const AlignRegExp = /^[<>]*$/;
+const AlignRegExp = /^[- .<>]*$/;
 const JsonLexRegExp = /("(?:\\["\\]|[^"])*")|(\btrue\b|\bfalse\b)|(\bnull\b)|(-?[0-9]+(?:\.[0-9]*)?(?:[eE][-+]?[0-9]+)?)/g;
 
 const WeightBold   = '\u001b[1m';
@@ -60,11 +61,98 @@ const CharReplacement = {
     '\f': '\\f', // '^L',
 };
 
-// const EscapedCharsRegExp = /[\0\r\v\f\x1b]/g;
-
 const SpecialCharRegExp = /([\0\r\v\f])|(\p{Control})/gu;
 
-export function formatTable({ header, body, alignment, color, separateRows, separateColumns }: FormatTableOptions): string[] {
+export interface TableStyle {
+    columnBorder: string;
+    columnNoBorder: string;
+    paddingChar: string;
+    leftOutline: string;
+    rightOutline: string;
+    topOutlineColumnBorder: string;
+    borderCrossing: string;
+    noBorderCrossing: string;
+    bottomOutlineColumnBorder: string;
+    topLeftOutline: string;
+    bottomLeftOutline: string;
+    topRightOutline: string;
+    bottomRightOutline: string;
+    rowBorder: string;
+    leftOutlineRowBorder: string;
+    rightOutlineRowBorder: string;
+    leftHeaderRowBorder: string;
+    rightHeaderRowBorder: string;
+    headerBorder: string;
+    headerBorderCrossing: string;
+    headerNoBorderCrossing: string;
+}
+
+export const DefaultTableStyle: Readonly<TableStyle> = {
+    columnBorder: ' │ ',
+    columnNoBorder: '  ',
+    paddingChar: ' ',
+    leftOutline: '│ ',
+    rightOutline: ' │',
+    topOutlineColumnBorder: '─┬─',
+    borderCrossing: '─┼─',
+    noBorderCrossing: '──',
+    bottomOutlineColumnBorder: '─┴─',
+    topLeftOutline:     '┌─',
+    bottomLeftOutline:  '└─',
+    topRightOutline:    '─┐',
+    bottomRightOutline: '─┘',
+    rowBorder: '─',
+    leftOutlineRowBorder:  '├─',
+    rightOutlineRowBorder: '─┤',
+    leftHeaderRowBorder:   '╞═',
+    rightHeaderRowBorder:  '═╡',
+    headerBorder: '═',
+    headerBorderCrossing: '═╪═',
+    headerNoBorderCrossing: '══',
+};
+
+export const AsciiTableStyle: Readonly<TableStyle> = {
+    columnBorder: ' | ',
+    columnNoBorder: '  ',
+    paddingChar: ' ',
+    leftOutline: '| ',
+    rightOutline: ' |',
+    topOutlineColumnBorder: '---',
+    borderCrossing: '-+-',
+    noBorderCrossing: '--',
+    bottomOutlineColumnBorder: '---',
+    topLeftOutline:     '+-',
+    bottomLeftOutline:  '+-',
+    topRightOutline:    '-+',
+    bottomRightOutline: '-+',
+    rowBorder: '-',
+    leftOutlineRowBorder:  '+-',
+    rightOutlineRowBorder: '-+',
+    leftHeaderRowBorder:   '|=',
+    rightHeaderRowBorder:  '=|',
+    headerBorder: '=',
+    headerBorderCrossing: '===',
+    headerNoBorderCrossing: '==',
+};
+
+export const RoundedTableStyle: Readonly<TableStyle> = {
+    ...DefaultTableStyle,
+    topLeftOutline:     '╭─',
+    bottomLeftOutline:  '╰─',
+    topRightOutline:    '─╮',
+    bottomRightOutline: '─╯',
+};
+
+const DefaultOptions: FormatTableOptions = {
+    outline: true,
+    columnBorders: false,
+    rowBorders: false,
+    style: DefaultTableStyle,
+};
+
+export type Table = ReadonlyArray<ReadonlyArray<unknown>>;
+
+export function formatTable(body: Table, { header, alignment, color, outline, rowBorders, columnBorders, style }: FormatTableOptions = DefaultOptions): string[] {
     const maxlens: number[] = [];
     const alignfmt = alignment ?? '';
     const processed: ProcessedCell[][] = [];
@@ -72,6 +160,32 @@ export function formatTable({ header, body, alignment, color, separateRows, sepa
     if (!AlignRegExp.test(alignfmt)) {
         throw new Error(`illegal alignment: ${alignfmt}`);
     }
+
+    outline ??= true;
+
+    const {
+        columnBorder,
+        columnNoBorder,
+        paddingChar,
+        leftOutline,
+        rightOutline,
+        topOutlineColumnBorder,
+        borderCrossing,
+        noBorderCrossing,
+        bottomOutlineColumnBorder,
+        topLeftOutline,
+        bottomLeftOutline,
+        topRightOutline,
+        bottomRightOutline,
+        rowBorder,
+        leftOutlineRowBorder,
+        rightOutlineRowBorder,
+        leftHeaderRowBorder,
+        rightHeaderRowBorder,
+        headerBorder,
+        headerBorderCrossing,
+        headerNoBorderCrossing,
+    } = style ? { ...DefaultTableStyle, ...style } : DefaultTableStyle;
 
     if (color === undefined) {
         color = typeof navigator !== "undefined" ?
@@ -85,16 +199,23 @@ export function formatTable({ header, body, alignment, color, separateRows, sepa
     const stringColor  = color ? ColorMagenta : '';
     const funcColor    = color ? ColorCyan    : '';
 
-    function processRow(row: unknown[]): ProcessedCell[] {
+    function processRow(row: ReadonlyArray<unknown>): ProcessedCell[] {
         const processedRow: ProcessedCell[] = [];
         for (let index = 0; index < row.length; ++ index) {
             const maxlen = maxlens[index];
             const cell = row[index];
             let align = alignfmt.charAt(index);
+            if (align === ' ') {
+                align = '';
+            }
             let cellColor: string = '';
             switch (typeof cell) {
                 case 'number':
                 case 'bigint':
+                    align ||= '.';
+                    cellColor = numberColor;
+                    break;
+
                 case 'boolean':
                     align ||= '<';
                     cellColor = numberColor;
@@ -155,7 +276,7 @@ export function formatTable({ header, body, alignment, color, separateRows, sepa
                             return numberColor + all + ColorReset;
                         });
                     }
-                    item.line = line + ' '.repeat(cellMaxlen - item.length);
+                    item.line = line + paddingChar.repeat(cellMaxlen - item.length);
                     item.length = cellMaxlen;
                 }
             } else if (typeof cell === 'string') {
@@ -199,7 +320,7 @@ export function formatTable({ header, body, alignment, color, separateRows, sepa
         processed.push(processRow(row));
     }
 
-    const colsep = separateColumns ? ' │ ' : '  ';
+    const colsep = columnBorders ? columnBorder : columnNoBorder;
 
     function alignRow(row: ProcessedCell[]): string[] {
         const grid: string[][] = [];
@@ -219,16 +340,24 @@ export function formatTable({ header, body, alignment, color, separateRows, sepa
 
             for (let lineIndex = 0; lineIndex < lineslen; ++ lineIndex) {
                 const item = lines[lineIndex];
-                const padding = ' '.repeat(maxlen - item.length);
                 let { line } = item;
 
                 if (color) {
                     line = color + line + ColorReset;
                 }
 
-                line = align === '<' ?
-                    padding + line :
-                    line + padding;
+                if (align === '-') {
+                    const space = maxlen - item.length;
+                    const before = (space / 2)|0;
+                    const after = space - before;
+                    line = paddingChar.repeat(before) + line + paddingChar.repeat(after);
+                } else {
+                    const padding = paddingChar.repeat(maxlen - item.length);
+                    // TODO: '.' alignment
+                    line = align === '>' ?
+                        line + padding :
+                        padding + line;
+                }
 
                 grid[lineIndex][cellIndex] = line;
             }
@@ -236,20 +365,25 @@ export function formatTable({ header, body, alignment, color, separateRows, sepa
 
         return grid.map(line => {
             while (line.length < maxlens.length) {
-                line.push(' '.repeat(maxlens[line.length]));
+                line.push(paddingChar.repeat(maxlens[line.length]));
             }
-            return '│ ' + line.join(colsep) + ' │';
+            const mid = line.join(colsep);
+            return outline ? leftOutline + mid + rightOutline : mid;
         });
     }
 
     const lines: string[] = [];
 
-    const hdrColSep = separateColumns ? '─┬─' : '──';
-    const midColSep = separateColumns ? '─┼─' : '──';
-    const ftrColSep = separateColumns ? '─┴─' : '──';
+    const hdrColSep = columnBorders ? topOutlineColumnBorder    : noBorderCrossing;
+    const midColSep = columnBorders ? borderCrossing            : noBorderCrossing;
+    const ftrColSep = columnBorders ? bottomOutlineColumnBorder : noBorderCrossing;
 
-    lines.push('┌─' + maxlens.map(len => '─'.repeat(len)).join(hdrColSep) + '─┐');
-    const seperator = '├─' + maxlens.map(len => '─'.repeat(len)).join(midColSep) + '─┤';
+    if (outline) {
+        lines.push(topLeftOutline + maxlens.map(len => rowBorder.repeat(len)).join(hdrColSep) + topRightOutline);
+    }
+
+    const sepMid = maxlens.map(len => rowBorder.repeat(len)).join(midColSep);
+    const seperator = outline ? leftOutlineRowBorder + sepMid + rightOutlineRowBorder : sepMid;
 
     if (processedHeader) {
         if (color) {
@@ -257,14 +391,23 @@ export function formatTable({ header, body, alignment, color, separateRows, sepa
                 cell.color += WeightBold;
             }
         }
+
         for (const line of alignRow(processedHeader)) {
             lines.push(line);
         }
-        if (separateRows) {
-            const hdrCrossSep = separateColumns ? '═╪═' : '══';
-            lines.push('╞═' + maxlens.map(len => '═'.repeat(len)).join(hdrCrossSep) + '═╡');
-        } else {
-            lines.push(seperator);
+
+        if (processed.length > 0) {
+            if (rowBorders) {
+                const hdrCrossSep = columnBorders ? headerBorderCrossing : headerNoBorderCrossing;
+                const mid = maxlens.map(len => headerBorder.repeat(len)).join(hdrCrossSep);
+                if (outline) {
+                    lines.push(leftHeaderRowBorder + mid + rightHeaderRowBorder);
+                } else {
+                    lines.push(mid);
+                }
+            } else {
+                lines.push(seperator);
+            }
         }
     }
 
@@ -272,17 +415,21 @@ export function formatTable({ header, body, alignment, color, separateRows, sepa
     for (const row of processed) {
         if (first) {
             first = false;
-        } else if (separateRows) {
+        } else if (rowBorders) {
             lines.push(seperator);
         }
         for (const line of alignRow(row)) {
             lines.push(line);
         }
     }
-    lines.push('└─' + maxlens.map(len => '─'.repeat(len)).join(ftrColSep) + '─┘');
+
+    if (outline) {
+        lines.push(bottomLeftOutline + maxlens.map(len => rowBorder.repeat(len)).join(ftrColSep) + bottomRightOutline);
+    }
+
     return lines;
 }
 
-export function printTable(options: FormatTableOptions): void {
-    console.log(formatTable(options).join('\n'));
+export function printTable(body: Table, options: FormatTableOptions=DefaultOptions): void {
+    console.log(formatTable(body, options).join('\n'));
 }
