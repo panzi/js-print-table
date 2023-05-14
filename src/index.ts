@@ -36,6 +36,21 @@ declare global {
     var navigator: { userAgent: string }|undefined;
 }
 
+// \u{FE00}-\u{FE0F} variant selectors
+// \u{200B}-\u{200D} zero width space, zero-width non-joiner, zero-width joiner
+// \u{2060} word joiner
+// \u{FEFF} zero-width no-break space
+const IgnoreRegExp = /\p{Nonspacing_Mark}|\p{Default_Ignorable_Code_Point}|\p{Control}|[\u{FE00}-\u{FE0F}\u{200B}-\u{200D}\u{2060}\u{FEFF}]/gu;
+
+// \u{3040}-\u{A4CF} I don't really know. guessed asian scripts
+// \u{AC00}-\u{D7FF} Korean Hangul
+// \u{20000}-\u{323AF} CJK Unified Ideographs Extensions
+// \u{FF01}-\u{FF60} asian full-width characters
+// \u{FFE0}-\u{FFE6} asian full-width characters
+const DoubleWidthRegExp = /\p{Emoji_Presentation}|[\u{3040}-\u{A4CF}|\u{AC00}-\u{D7FF}\u{20000}-\u{323AF}\u{FF01}-\u{FF60}\u{FFE0}-\u{FFE6}]/gu;
+
+const SurrogatePairRegExp = /[\u{D800}-\u{10FFFF}]/gu;
+
 export function formatTable({ header, body, alignment, color, separateRows, separateColumns }: FormatTableOptions): string[] {
     const maxlens: number[] = [];
     const alignfmt = alignment ?? '';
@@ -105,112 +120,8 @@ export function formatTable({ header, body, alignment, color, separateRows, sepa
             let cellMaxlen = 0;
             const lines: ProcessedLine[] = [];
             for (const line of rawLines) {
-                let len = 0;
-                for (let charIndex = 0; charIndex < line.length; ++ charIndex) {
-                    let codepoint = line.charCodeAt(charIndex);
-                    if (codepoint >= 0xD800 && codepoint <= 0xDBFF) {
-                        const low = line.charCodeAt(charIndex + 1);
-                        if (low >= 0xDC00 && low <= 0xDFFF) {
-                            codepoint = (codepoint - 0xD800) * 0x400 + (low - 0xDC00) + 0x10_000;
-                            ++ charIndex;
-                        }
-                    }
-                    // There is *much* more than these things, it is all hacky,
-                    // and depends very much on however your terminal/edotir renders things.
-                    if (codepoint <= 0xFF) {
-                        // ASCII + latin 1
-                        ++ len;
-                    } else if (
-                        // emojis (very much not exact)
-                        ((codepoint >= 0x0231A && codepoint <= 0x01F9FF) && (
-                            (                        codepoint <= 0x0231B) ||
-                            (codepoint >= 0x023E9 && codepoint <= 0x023FA) ||
-                            (codepoint >= 0x02614 && codepoint <= 0x02615) ||
-                            codepoint === 0x0267F ||
-                            (codepoint >= 0x02648 && codepoint <= 0x02653) ||
-                            codepoint === 0x02657 ||
-                            codepoint === 0x026A1 ||
-                            (codepoint >= 0x026BD && codepoint <= 0x026BE) ||
-                            (codepoint >= 0x026C4 && codepoint <= 0x026C5) ||
-                            codepoint === 0x026CE ||
-                            codepoint === 0x026D4 ||
-                            codepoint === 0x026EA ||
-                            (codepoint >= 0x026EC && codepoint <= 0x026EB) ||
-                            codepoint === 0x026F2 ||
-                            codepoint === 0x026F3 ||
-                            codepoint === 0x026F5 ||
-                            codepoint === 0x026FA ||
-                            codepoint === 0x026FD ||
-                            codepoint === 0x02705 ||
-                            codepoint === 0x0270A ||
-                            codepoint === 0x0270B ||
-                            (codepoint >= 0x02934 && codepoint <= 0x02935) ||
-                            (codepoint >= 0x02B1B && codepoint <= 0x02B1C) ||
-                            (codepoint >= 0x1F170 && codepoint <= 0x1F6F9 && codepoint !== 0x1F3F3) ||
-                            (codepoint >= 0x1F910) )) ||
-
-                        // asian scripts
-                        (
-                            // XXX: I don't really know. guessed stuff
-                            (codepoint >= 0x3040 && codepoint <= 0xA4CF) ||
-
-                            // Korean Hangul
-                            (codepoint >= 0xAC00 && codepoint <= 0xD7FF) ||
-
-                            // CJK Unified Ideographs Extensions
-                            (codepoint >= 0x20000 && codepoint <= 0x323AF)
-                        ) ||
-
-                        // asian full-width characters
-                        (
-                            (codepoint >= 0xFF01 && codepoint <= 0xFF60) ||
-                            (codepoint >= 0xFFE0 && codepoint <= 0xFFE6)
-                        ) ||
-
-                        // Devanagari letter (Hindi) TODO: still not correct
-                        (codepoint >= 0x0934 && codepoint <= 0x0939)
-                    ) {
-                        len += 2;
-                    } else if (
-                        // TODO: would need all Mn codepoints, but there are so many!
-
-                        // diacritics
-                        codepoint !== 0x032A &&
-                        !(codepoint >= 0x0346 && codepoint <= 0x034E) &&
-                        !(codepoint >= 0x035C && codepoint <= 0x036F) &&
-                        !(codepoint >= 0x1AB0 && codepoint <= 0x1AFF) &&
-                        !(codepoint >= 0x1DC0 && codepoint <= 0x1DFF) &&
-                        !(codepoint >= 0x20D0 && codepoint <= 0x20FF) &&
-
-                        // Arabic (most likely incomplete)
-                        !(codepoint >= 0x064B && codepoint <= 0x0657) &&
-                        !(codepoint >= 0x0659 && codepoint <= 0x065F) &&
-
-                        // Devanagari vowel signs (Hindi) TODO: still not correct
-                        !(codepoint >= 0x08E3 && codepoint <= 0x0902) &&
-                        !(codepoint >= 0x093A && codepoint <= 0x093B) &&
-                        !(codepoint >= 0x093E && codepoint <= 0x094F) &&
-                        !(codepoint == 0xA8E0 || codepoint == 0xA8F1) &&
-
-                        // variant selectors
-                        !(codepoint >= 0xFE00 && codepoint <= 0xFE0F) &&
-
-                        // more diacritics
-                        !(codepoint >= 0xFE20 && codepoint <= 0xFE2F) &&
-
-                        // zero width space, zero-width non-joiner, zero-width joiner
-                        !(codepoint >= 0x200B && codepoint <= 0x200D) &&
-
-                        // word joiner
-                        codepoint !== 0x2060 &&
-
-                        // zero-width no-break space
-                        codepoint !== 0xFEFF
-                    ) {
-                        ++ len;
-                    }
-                }
-                // const len = line.length;
+                const cleanLine = line.replace(IgnoreRegExp, '').replace(DoubleWidthRegExp, 'XX').replace(SurrogatePairRegExp, 'x');
+                const len = cleanLine.length;
                 if (len > cellMaxlen) {
                     cellMaxlen = len;
                 }
