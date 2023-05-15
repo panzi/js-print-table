@@ -4,6 +4,7 @@ type ProcessedCell = { align: string, lines: ProcessedLine[], color: string };
 export type FormatTableOptions = {
     readonly header?: ReadonlyArray<unknown>,
     readonly alignment?: string,
+    readonly headerAlignment?: string,
     readonly color?: boolean,
     readonly rowBorders?: boolean,
     readonly columnBorders?: boolean,
@@ -233,13 +234,16 @@ const DefaultOptions: FormatTableOptions = {
 
 export type Table = ReadonlyArray<ReadonlyArray<unknown>>;
 
-export function formatTable(body: Table, { header, alignment, color, outline, rowBorders, columnBorders, style, raw }: FormatTableOptions = DefaultOptions): string[] {
+export function formatTable(body: Table, { header, alignment, headerAlignment, color, outline, rowBorders, columnBorders, style, raw }: FormatTableOptions = DefaultOptions): string[] {
     const maxlens: number[] = [];
-    const alignfmt = alignment ?? '';
     const processed: ProcessedCell[][] = [];
 
-    if (!AlignRegExp.test(alignfmt)) {
-        throw new Error(`illegal alignment: ${alignfmt}`);
+    if (alignment && !AlignRegExp.test(alignment)) {
+        throw new Error(`illegal alignment: ${alignment}`);
+    }
+
+    if (headerAlignment && !AlignRegExp.test(headerAlignment)) {
+        throw new Error(`illegal headerAlignment: ${headerAlignment}`);
     }
 
     outline ??= true;
@@ -283,12 +287,12 @@ export function formatTable(body: Table, { header, alignment, color, outline, ro
     const funcColor    = color ? ColorCyan    : '';
     const escapeColor  = color ? ColorYellow  : '';
 
-    function processRow(row: ReadonlyArray<unknown>): ProcessedCell[] {
+    function processRow(row: ReadonlyArray<unknown>, alignment: string): ProcessedCell[] {
         const processedRow: ProcessedCell[] = [];
         for (let index = 0; index < row.length; ++ index) {
             const maxlen = maxlens[index];
             const cell = row[index];
-            let align = alignfmt.charAt(index);
+            let align = alignment.charAt(index);
             if (align === ' ') {
                 align = '';
             }
@@ -408,10 +412,10 @@ export function formatTable(body: Table, { header, alignment, color, outline, ro
         return processedRow;
     }
 
-    const processedHeader = header ? processRow(header) : null;
+    const processedHeader = header ? processRow(header, headerAlignment ?? alignment ?? '') : null;
 
     for (const row of body) {
-        processed.push(processRow(row));
+        processed.push(processRow(row, alignment ?? ''));
     }
 
     const colsep = columnBorders ? columnBorder : columnNoBorder;
