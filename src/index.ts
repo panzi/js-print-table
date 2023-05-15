@@ -567,3 +567,72 @@ export function formatTable(body: Table, { header, alignment, headerAlignment, c
 export function printTable(body: Table, options: FormatTableOptions=DefaultOptions): void {
     console.log(formatTable(body, options).join('\n'));
 }
+
+export type FormatTableOptionsFromObject = Omit<FormatTableOptions, 'headers'> & {
+    header?: ReadonlyArray<string | [key: string, label: string]>;
+    indexColumn?: boolean;
+    indexColumnLabel?: string;
+};
+
+const DefaultOptionsFromObject: FormatTableOptionsFromObject = {
+    outline: true,
+    columnBorders: false,
+    rowBorders: false,
+    style: DefaultTableStyle,
+};
+
+export function formatTableFromObjects(body: ReadonlyArray<{ [key: string]: unknown }>, options: FormatTableOptionsFromObject=DefaultOptionsFromObject): string[] {
+    const { header, indexColumn, indexColumnLabel } = options;
+    const converted: unknown[][] = [];
+    let convertedHeader: string[];
+    let keys: string[];
+
+    if (header) {
+        convertedHeader = [];
+        keys = [];
+        for (const hdr of header) {
+            if (typeof hdr === 'string') {
+                convertedHeader.push(hdr);
+                keys.push(hdr);
+            } else {
+                const [key, label] = hdr;
+                convertedHeader.push(label);
+                keys.push(key);
+            }
+        }
+    } else {
+        const keySet = new Set<string>();
+        for (const row of body) {
+            for (const key of Object.keys(row)) {
+                keySet.add(key);
+            }
+        }
+        keys = convertedHeader = Array.from(keySet);
+    }
+
+    if (indexColumn) {
+        convertedHeader.unshift(indexColumnLabel ?? 'Index');
+        for (let index = 0; index < body.length; ++ index) {
+            const obj = body[index];
+            const row: unknown[] = [index];
+            for (const key of keys) {
+                row.push(key in obj ? obj[key] : '');
+            }
+            converted.push(row);
+        }
+    } else {
+        for (const obj of body) {
+            const row: unknown[] = [];
+            for (const key of keys) {
+                row.push(key in obj ? obj[key] : '');
+            }
+            converted.push(row);
+        }
+    }
+
+    return formatTable(converted, { ...options, header: convertedHeader });
+}
+
+export function printTableFromObjects(body: { [key: string]: unknown }[], options: FormatTableOptionsFromObject=DefaultOptionsFromObject): void {
+    console.log(formatTableFromObjects(body, options).join('\n'));
+}
