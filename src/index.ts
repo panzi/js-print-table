@@ -234,6 +234,22 @@ const DefaultOptions: FormatTableOptions = {
 
 export type Table = ReadonlyArray<ReadonlyArray<unknown>>;
 
+function stringControlReplacer(_: string, esc: string, contr: string): string {
+    return esc ? CharReplacement[esc] : '\\u' + contr.charCodeAt(0).toString(16).padStart(4, '0');
+}
+
+function stringControlReplacerWithColor(_: string, esc: string, contr: string): string {
+    return ColorYellow + (esc ? CharReplacement[esc] : '\\u' + contr.charCodeAt(0).toString(16).padStart(4, '0')) + ColorReset;
+}
+
+function symbolControlReplacerWithColor(_: string, esc: string, contr: string): string {
+    return ColorYellow + (esc ? CharReplacement[esc] : '\\u' + contr.charCodeAt(0).toString(16).padStart(4, '0')) + ColorRed;
+}
+
+function jsonReplacer(_key: string, value: unknown): unknown {
+    return typeof value === 'bigint' ? String(value) : value;
+}
+
 export function formatTable(body: Table, { header, alignment, headerAlignment, color, outline, rowBorders, columnBorders, style, raw }: FormatTableOptions = DefaultOptions): string[] {
     const maxlens: number[] = [];
     const processed: ProcessedCell[][] = [];
@@ -333,9 +349,8 @@ export function formatTable(body: Table, { header, alignment, headerAlignment, c
 
             const rawLines = (
                 cell instanceof Date ? cell.toISOString() :
-                typeof cell === 'object' ? JSON.stringify(cell, (_key, value) => typeof value === 'bigint' ? String(value) : value, 4).
-                    replace(SpecialCharRegExp, (_, esc, contr) =>
-                        (esc ? CharReplacement[esc] : '\\u' + contr.charCodeAt(0).toString(16).padStart(4, '0'))) :
+                typeof cell === 'object' ? JSON.stringify(cell, jsonReplacer, 4).
+                    replace(SpecialCharRegExp, stringControlReplacer) :
                 String(cell)
             ).replaceAll('\t', '    ').split('\n');
 
@@ -378,12 +393,12 @@ export function formatTable(body: Table, { header, alignment, headerAlignment, c
                     if (color) {
                         for (const item of lines) {
                             item.line = item.line.
-                                replace(SpecialCharRegExp, (_, esc, contr) => escapeColor + (esc ? CharReplacement[esc] : '\\u' + contr.charCodeAt(0).toString(16).padStart(4, '0')) + ColorReset);
+                                replace(SpecialCharRegExp, stringControlReplacerWithColor);
                         }
                     } else {
                         for (const item of lines) {
                             item.line = item.line.
-                                replace(SpecialCharRegExp, (_, esc, contr) => esc ? CharReplacement[esc] : '\\u' + contr.charCodeAt(0).toString(16).padStart(4, '0'));
+                                replace(SpecialCharRegExp, stringControlReplacer);
                         }
                     }
                 }
@@ -392,12 +407,12 @@ export function formatTable(body: Table, { header, alignment, headerAlignment, c
                     if (color) {
                         for (const item of lines) {
                             item.line = item.line.
-                                replace(SpecialCharRegExp, (_, esc, contr) => escapeColor + (esc ? CharReplacement[esc] : '\\u' + contr.charCodeAt(0).toString(16).padStart(4, '0')) + symbolColor);
+                                replace(SpecialCharRegExp, symbolControlReplacerWithColor);
                         }
                     } else {
                         for (const item of lines) {
                             item.line = item.line.
-                                replace(SpecialCharRegExp, (_, esc, contr) => esc ? CharReplacement[esc] : '\\u' + contr.charCodeAt(0).toString(16).padStart(4, '0'));
+                                replace(SpecialCharRegExp, stringControlReplacer);
                         }
                     }
                 }
@@ -429,6 +444,10 @@ export function formatTable(body: Table, { header, alignment, headerAlignment, c
             if (lineCount > maxLines) {
                 maxLines = lineCount;
             }
+        }
+
+        if (maxLines === 0) {
+            maxLines = 1;
         }
 
         for (let lineIndex = 0; lineIndex < maxLines; ++ lineIndex) {
@@ -475,13 +494,16 @@ export function formatTable(body: Table, { header, alignment, headerAlignment, c
             }
         }
 
-        return grid.map(line => {
+        const lines: string[] = [];
+        for (const line of grid) {
             while (line.length < maxlens.length) {
                 line.push(paddingChar.repeat(maxlens[line.length]));
             }
             const mid = line.join(colsep);
-            return outline ? leftOutline + mid + rightOutline : mid;
-        });
+            lines.push(outline ? leftOutline + mid + rightOutline : mid);
+        }
+
+        return lines;
     }
 
     const lines: string[] = [];
