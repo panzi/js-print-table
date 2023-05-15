@@ -63,7 +63,7 @@ const CharReplacement = {
     '\f': '\\f', // '^L',
 };
 
-const SpecialCharRegExp = /([\0\r\v\f])|(\p{Control})/gu;
+const SpecialCharRegExp = /([\0\r\v\f])|([\u{0}-\u{9}\u{B}-\u{1F}\u{7F}-\u{9F}])/gu;
 
 // TODO: match more ANSI escape sequences
 const AnsiEscapeRegExp = /\u001b\[\d+(?:;\d+)*m/gu;
@@ -320,8 +320,6 @@ export function formatTable(body: Table, { header, alignment, color, outline, ro
                         align ||= '<';
                         cellColor = numberColor;
                     } else {
-                        align ||= '>';
-
                         if (cell == null) {
                             cellColor = nullColor;
                         }
@@ -331,7 +329,9 @@ export function formatTable(body: Table, { header, alignment, color, outline, ro
 
             const rawLines = (
                 cell instanceof Date ? cell.toISOString() :
-                typeof cell === 'object' ? JSON.stringify(cell, null, 4) :
+                typeof cell === 'object' ? JSON.stringify(cell, (_key, value) => typeof value === 'bigint' ? String(value) : value, 4).
+                    replace(SpecialCharRegExp, (_, esc, contr) =>
+                        (esc ? CharReplacement[esc] : '\\u' + contr.charCodeAt(0).toString(16).padStart(4, '0'))) :
                 String(cell)
             ).replaceAll('\t', '    ').split('\n');
 
@@ -416,7 +416,7 @@ export function formatTable(body: Table, { header, alignment, color, outline, ro
 
     const colsep = columnBorders ? columnBorder : columnNoBorder;
 
-    function alignRow(row: ProcessedCell[]): string[] {
+    function alignRow(row: ProcessedCell[], defaultAlignment: string): string[] {
         const grid: string[][] = [];
 
         let maxLines = 0;
@@ -433,8 +433,10 @@ export function formatTable(body: Table, { header, alignment, color, outline, ro
 
         for (let cellIndex = 0; cellIndex < row.length; ++ cellIndex) {
             const maxlen = maxlens[cellIndex];
-            const { align, lines, color } = row[cellIndex];
+            const cell = row[cellIndex];
+            const { lines, color } = cell;
             const lineslen = lines.length;
+            const align = cell.align || defaultAlignment;
 
             let lineIndex = 0
             for (; lineIndex < lineslen; ++ lineIndex) {
@@ -498,7 +500,7 @@ export function formatTable(body: Table, { header, alignment, color, outline, ro
             }
         }
 
-        for (const line of alignRow(processedHeader)) {
+        for (const line of alignRow(processedHeader, '-')) {
             lines.push(line);
         }
 
@@ -524,7 +526,7 @@ export function formatTable(body: Table, { header, alignment, color, outline, ro
         } else if (rowBorders) {
             lines.push(seperator);
         }
-        for (const line of alignRow(row)) {
+        for (const line of alignRow(row, '>')) {
             lines.push(line);
         }
     }
