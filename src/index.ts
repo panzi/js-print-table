@@ -1,4 +1,4 @@
-type ProcessedLine = { length: number, line: string };
+type ProcessedLine = { prefix: number, suffix: number, line: string };
 type ProcessedCell = { align: string, lines: ProcessedLine[], color: string };
 
 export type FormatTableOptions = {
@@ -250,8 +250,13 @@ function jsonReplacer(_key: string, value: unknown): unknown {
     return typeof value === 'bigint' ? String(value) : value;
 }
 
+interface LengthInfo {
+    prefix: number;
+    suffix: number;
+}
+
 export function formatTable(body: Table, { header, alignment, headerAlignment, color, outline, rowBorders, columnBorders, style, raw }: FormatTableOptions = DefaultOptions): string[] {
-    const maxlens: number[] = [];
+    const maxlens: LengthInfo[] = [];
     const processed: ProcessedCell[][] = [];
 
     if (alignment && !AlignRegExp.test(alignment)) {
@@ -306,7 +311,7 @@ export function formatTable(body: Table, { header, alignment, headerAlignment, c
     function processRow(row: ReadonlyArray<unknown>, alignment: string): ProcessedCell[] {
         const processedRow: ProcessedCell[] = [];
         for (let index = 0; index < row.length; ++ index) {
-            const maxlen = maxlens[index];
+            const maxlen = maxlens[index] ??= { prefix: 0, suffix: 0 };
             const cell = row[index];
             let align = alignment.charAt(index);
             if (align === ' ') {
@@ -337,7 +342,7 @@ export function formatTable(body: Table, { header, alignment, headerAlignment, c
 
                 default:
                     if (cell instanceof Date) {
-                        align ||= '<';
+                        align ||= '.';
                         cellColor = numberColor;
                     } else {
                         if (cell == null) {
@@ -354,7 +359,8 @@ export function formatTable(body: Table, { header, alignment, headerAlignment, c
                 String(cell)
             ).replaceAll('\t', '    ').split('\n');
 
-            let cellMaxlen = 0;
+            let maxPrefix = 0;
+            let maxSuffix = 0;
             const lines: ProcessedLine[] = [];
             for (const line of rawLines) {
                 let cleanLine = line.replace(DoubleWidthRegExp, 'XX').replace(IgnoreRegExp, '');
@@ -364,15 +370,34 @@ export function formatTable(body: Table, { header, alignment, headerAlignment, c
                     cleanLine = cleanLine.replace(ControlRegExp, '\\u####');
                 }
                 cleanLine = cleanLine.replace(SurrogatePairRegExp, 'x');
-                const len = cleanLine.length;
-                if (len > cellMaxlen) {
-                    cellMaxlen = len;
+                let prefix = cleanLine.length;
+                let suffix: number;
+                if (align === '.') {
+                    const dotIndex = cleanLine.indexOf('.');
+                    if (dotIndex < 0) {
+                        suffix = 0;
+                    } else {
+                        suffix = prefix - dotIndex;
+                        prefix = dotIndex;
+                        if (suffix > maxSuffix) {
+                            maxSuffix = suffix;
+                        }
+                    }
+                } else {
+                    suffix = 0;
                 }
-                lines.push({ line, length: len });
+                if (prefix > maxPrefix) {
+                    maxPrefix = prefix;
+                }
+                lines.push({ line, prefix, suffix });
             }
 
-            if (maxlen === undefined || cellMaxlen > maxlen) {
-                maxlens[index] = cellMaxlen;
+            if (maxPrefix > maxlen.prefix) {
+                maxlen.prefix = maxPrefix;
+            }
+
+            if (maxSuffix > maxlen.suffix) {
+                maxlen.suffix = maxSuffix;
             }
 
             if (typeof cell === 'object' && !(cell instanceof Date)) {
@@ -385,8 +410,8 @@ export function formatTable(body: Table, { header, alignment, headerAlignment, c
                             return numberColor + all + ColorReset;
                         });
                     }
-                    item.line = line + paddingChar.repeat(cellMaxlen - item.length);
-                    item.length = cellMaxlen;
+                    item.line = line + paddingChar.repeat(maxPrefix - item.prefix);
+                    item.prefix = maxPrefix;
                 }
             } else if (typeof cell === 'string') {
                 if (!raw) {
@@ -455,7 +480,8 @@ export function formatTable(body: Table, { header, alignment, headerAlignment, c
         }
 
         for (let cellIndex = 0; cellIndex < row.length; ++ cellIndex) {
-            const maxlen = maxlens[cellIndex];
+            const { prefix: maxPrefix, suffix: maxSuffix } = maxlens[cellIndex];
+            const maxLength = maxPrefix + maxSuffix;
             const cell = row[cellIndex];
             const { lines, color } = cell;
             const lineslen = lines.length;
@@ -471,23 +497,24 @@ export function formatTable(body: Table, { header, alignment, headerAlignment, c
                 }
 
                 if (align === '-') {
-                    const space = maxlen - item.length;
+                    const itemLength = item.prefix + item.suffix;
+                    const space = maxLength - itemLength;
                     const before = (space / 2)|0;
                     const after = space - before;
                     line = paddingChar.repeat(before) + line + paddingChar.repeat(after);
+                } else if (align === '>') {
+                    const itemLength = item.prefix + item.suffix;
+                    const padding = paddingChar.repeat(maxLength - itemLength);
+                    line += padding;
                 } else {
-                    const padding = paddingChar.repeat(maxlen - item.length);
-                    // TODO: '.' alignment
-                    line = align === '>' ?
-                        line + padding :
-                        padding + line;
+                    line = paddingChar.repeat(maxPrefix - item.prefix) + line + paddingChar.repeat(maxSuffix - item.suffix);
                 }
 
                 grid[lineIndex][cellIndex] = line;
             }
 
             if (lineIndex < maxLines) {
-                const padding = paddingChar.repeat(maxlen);
+                const padding = paddingChar.repeat(maxLength);
                 for (; lineIndex < maxLines; ++ lineIndex) {
                     grid[lineIndex][cellIndex] = padding;
                 }
@@ -497,7 +524,8 @@ export function formatTable(body: Table, { header, alignment, headerAlignment, c
         const lines: string[] = [];
         for (const line of grid) {
             while (line.length < maxlens.length) {
-                line.push(paddingChar.repeat(maxlens[line.length]));
+                const { prefix, suffix } = maxlens[line.length];
+                line.push(paddingChar.repeat(prefix + suffix));
             }
             const mid = line.join(colsep);
             lines.push(outline ? leftOutline + mid + rightOutline : mid);
@@ -513,10 +541,10 @@ export function formatTable(body: Table, { header, alignment, headerAlignment, c
     const ftrColSep = columnBorders ? bottomOutlineColumnBorder : outlineNoBorderCrossing;
 
     if (outline) {
-        lines.push(topLeftOutline + maxlens.map(len => horizontalOutline.repeat(len)).join(hdrColSep) + topRightOutline);
+        lines.push(topLeftOutline + maxlens.map(({ prefix, suffix }) => horizontalOutline.repeat(prefix + suffix)).join(hdrColSep) + topRightOutline);
     }
 
-    const sepMid = maxlens.map(len => rowBorder.repeat(len)).join(midColSep);
+    const sepMid = maxlens.map(({ prefix, suffix }) => rowBorder.repeat(prefix + suffix)).join(midColSep);
     const seperator = outline ? leftOutlineRowBorder + sepMid + rightOutlineRowBorder : sepMid;
 
     if (processedHeader) {
@@ -533,7 +561,7 @@ export function formatTable(body: Table, { header, alignment, headerAlignment, c
         if (processed.length > 0) {
             if (rowBorders) {
                 const hdrCrossSep = columnBorders ? headerBorderCrossing : headerNoBorderCrossing;
-                const mid = maxlens.map(len => headerBorder.repeat(len)).join(hdrCrossSep);
+                const mid = maxlens.map(({ prefix, suffix }) => headerBorder.repeat(prefix + suffix)).join(hdrCrossSep);
                 if (outline) {
                     lines.push(leftHeaderRowBorder + mid + rightHeaderRowBorder);
                 } else {
@@ -558,7 +586,7 @@ export function formatTable(body: Table, { header, alignment, headerAlignment, c
     }
 
     if (outline) {
-        lines.push(bottomLeftOutline + maxlens.map(len => horizontalOutline.repeat(len)).join(ftrColSep) + bottomRightOutline);
+        lines.push(bottomLeftOutline + maxlens.map(({ prefix, suffix }) => horizontalOutline.repeat(prefix + suffix)).join(ftrColSep) + bottomRightOutline);
     }
 
     return lines;
