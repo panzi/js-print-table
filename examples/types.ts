@@ -10,7 +10,17 @@ printTable([
     ['',      Infinity,   -Infinity],
     ['bigint', 123567890n,  -1234567890n],
     ['boolean', true, false],
-    ['string', 'A string with some special characters:\n\0 \r \v \f \u001b \x7f', 'Tabs are just 4 spaces for now,\nmight improve later:\n\ttab\n    4 spaces'],
+    ['string', 'A string with some special characters:\n\0 \r \v \f \u001b \x7f', 
+    `Tabs:
+		tab
+1		tab
+12		tab
+123		tab
+1234	tab
+12345	tab
+123456	tab
+1234567	tab
+`],
     ['symbol', Symbol("symbol with special characters:\n\0 \r \v \f \u001b \x7f")],
     ['function', ()=>{}, function(){}],
     ['object', null, {

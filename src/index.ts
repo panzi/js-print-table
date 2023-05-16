@@ -11,6 +11,7 @@ export type FormatTableOptions = {
     readonly outline?: boolean,
     readonly style?: Partial<Readonly<TableStyle>>,
     readonly raw?: boolean,
+    readonly tabWidth?: number,
 };
 
 const AlignRegExp = /^[- .<>]*$/;
@@ -255,7 +256,7 @@ interface LengthInfo {
     suffix: number;
 }
 
-export function formatTable(body: Table, { header, alignment, headerAlignment, color, outline, rowBorders, columnBorders, style, raw }: FormatTableOptions = DefaultOptions): string[] {
+export function formatTable(body: Table, { header, tabWidth, alignment, headerAlignment, color, outline, rowBorders, columnBorders, style, raw }: FormatTableOptions = DefaultOptions): string[] {
     const maxlens: LengthInfo[] = [];
     const processed: ProcessedCell[][] = [];
 
@@ -301,6 +302,11 @@ export function formatTable(body: Table, { header, alignment, headerAlignment, c
             true;
     }
 
+    const tabW = tabWidth ?? 4;
+    if (tabW < 0 || (tabW|0) !== tabW) {
+        throw new TypeError(`illegal tabWidth: ${tabWidth}`);
+    }
+
     const numberColor  = color ? ColorGreen   : '';
     const nullColor    = color ? ColorBlue    : '';
     const symbolColor  = color ? ColorRed     : '';
@@ -310,10 +316,10 @@ export function formatTable(body: Table, { header, alignment, headerAlignment, c
 
     function processRow(row: ReadonlyArray<unknown>, alignment: string): ProcessedCell[] {
         const processedRow: ProcessedCell[] = [];
-        for (let index = 0; index < row.length; ++ index) {
-            const maxlen = maxlens[index] ??= { prefix: 0, suffix: 0 };
-            const cell = row[index];
-            let align = alignment.charAt(index);
+        for (let cellIndex = 0; cellIndex < row.length; ++ cellIndex) {
+            const maxlen = maxlens[cellIndex] ??= { prefix: 0, suffix: 0 };
+            const cell = row[cellIndex];
+            let align = alignment.charAt(cellIndex);
             if (align === ' ') {
                 align = '';
             }
@@ -357,7 +363,26 @@ export function formatTable(body: Table, { header, alignment, headerAlignment, c
                 typeof cell === 'object' ? JSON.stringify(cell, jsonReplacer, 4).
                     replace(SpecialCharRegExp, stringControlReplacer) :
                 String(cell)
-            ).replaceAll('\t', '    ').split('\n');
+            ).split('\n');
+
+            for (let lineIndex = 0; lineIndex < rawLines.length; ++ lineIndex) {
+                const line = rawLines[lineIndex];
+                // expecting the JIT to optimize += better than array buffering
+                let newLine = '';
+                for (let index = 0; index < line.length; ++ index) {
+                    const prev = index;
+                    index = line.indexOf('\t', prev);
+                    if (index < 0) {
+                        newLine += line.slice(prev);
+                        break;
+                    }
+
+                    newLine += line.slice(prev, index);
+                    const padding = tabW - (newLine.length % tabW);
+                    newLine += paddingChar.repeat(padding);
+                }
+                rawLines[lineIndex] = newLine;
+            }
 
             let maxPrefix = 0;
             let maxSuffix = 0;
