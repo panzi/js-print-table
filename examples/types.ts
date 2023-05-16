@@ -21,7 +21,7 @@ printTable([
 123456	tab
 1234567	tab
 `],
-    ['symbol', Symbol("symbol with special characters:\n\0 \r \v \f \u001b \x7f")],
+    ['symbol', Symbol("symbol with special characters:\n\0 \r \v \f \u001b \x7f"), Symbol.iterator],
     ['function', ()=>{}, function(){}],
     ['object', null, {
         "key": "value",
