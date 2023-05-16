@@ -3,6 +3,10 @@ import { printTable } from "../src/index.js";
 
 const color = !!process.stdout.isTTY;
 
+function addNumbers (a: number, b: number) {
+    return a + b;
+}
+
 printTable([
     ['number',     123,         123.4],
     ['',             4.001,       0.567],
@@ -23,7 +27,7 @@ printTable([
 1234567	tab
 `],
     ['symbol', Symbol("symbol with special characters:\n\0 \r \v \f \u001b \x7f"), Symbol.iterator],
-    ['function', ()=>{}, function(){}],
+    ['function', ()=>{}, addNumbers],
     ['object', null, {
         "key": "value",
         "array": [1, 2n, true, false, null, "\0 \r \v \f \u001b \x7f\n", new Date()]
