@@ -6,6 +6,7 @@ const color = !!process.stdout.isTTY;
 printTable([
     ['number',     123,         123.4],
     ['',             4.001,       0.567],
+    ['',            -1.2e-10,     2.3e32],
     ['',           NaN,        -100.5],
     ['',      Infinity,   -Infinity],
     ['bigint', 123567890n,  -1234567890n],
