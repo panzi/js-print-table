@@ -324,46 +324,63 @@ export function formatTable(body: Table, { header, tabWidth, alignment, headerAl
                 align = '';
             }
             let cellColor: string = '';
+            let strCell: string;
+            let isJson = false;
             switch (typeof cell) {
                 case 'number':
                 case 'bigint':
                     align ||= '.';
                     cellColor = numberColor;
+                    strCell = String(cell);
                     break;
 
                 case 'boolean':
                     align ||= '<';
                     cellColor = numberColor;
+                    strCell = String(cell);
                     break;
 
                 case 'symbol':
                     align ||= '>';
                     cellColor = symbolColor;
+                    strCell = String(cell);
                     break;
 
                 case 'function':
                     align ||= '>';
                     cellColor = funcColor;
+                    strCell = String(cell);
                     break;
 
-                default:
+                case 'object':
                     if (cell instanceof Date) {
                         align ||= '.';
                         cellColor = numberColor;
+                        strCell = cell.toISOString();
                     } else {
+                        align ||= '>';
+                        isJson = true;
                         if (cell == null) {
                             cellColor = nullColor;
                         }
+                        strCell = JSON.stringify(cell, jsonReplacer, 4).
+                            replace(SpecialCharRegExp, stringControlReplacer);
                     }
+                    break;
+
+                case 'undefined':
+                    align ||= '>';
+                    cellColor = nullColor;
+                    strCell = 'undefined';
+                    break;
+
+                default:
+                    align ||= '>';
+                    strCell = String(cell);
                     break;
             }
 
-            const rawLines = (
-                cell instanceof Date ? cell.toISOString() :
-                typeof cell === 'object' ? JSON.stringify(cell, jsonReplacer, 4).
-                    replace(SpecialCharRegExp, stringControlReplacer) :
-                String(cell)
-            ).split('\n');
+            const rawLines = strCell.split('\n');
 
             for (let lineIndex = 0; lineIndex < rawLines.length; ++ lineIndex) {
                 const line = rawLines[lineIndex];
@@ -425,7 +442,7 @@ export function formatTable(body: Table, { header, tabWidth, alignment, headerAl
                 maxlen.suffix = maxSuffix;
             }
 
-            if (typeof cell === 'object' && !(cell instanceof Date)) {
+            if (isJson) {
                 for (const item of lines) {
                     let { line } = item;
                     if (color) {
