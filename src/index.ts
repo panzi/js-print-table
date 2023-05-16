@@ -303,7 +303,7 @@ export function formatTable(body: Table, { header, tabWidth, alignment, headerAl
     }
 
     const tabW = tabWidth ?? 4;
-    if (tabW < 0 || (tabW|0) !== tabW) {
+    if (tabW < 1 || (tabW|0) !== tabW) {
         throw new TypeError(`illegal tabWidth: ${tabWidth}`);
     }
 
