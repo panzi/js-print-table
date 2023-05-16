@@ -360,11 +360,13 @@ export function formatTable(body: Table, { header, tabWidth, alignment, headerAl
                     } else {
                         align ||= '>';
                         isJson = true;
-                        if (cell == null) {
+                        if (cell === null) {
                             cellColor = nullColor;
+                            strCell = 'null';
+                        } else {
+                            strCell = JSON.stringify(cell, jsonReplacer, 4).
+                                replace(SpecialCharRegExp, stringControlReplacer);
                         }
-                        strCell = JSON.stringify(cell, jsonReplacer, 4).
-                            replace(SpecialCharRegExp, stringControlReplacer);
                     }
                     break;
 
@@ -384,21 +386,31 @@ export function formatTable(body: Table, { header, tabWidth, alignment, headerAl
 
             for (let lineIndex = 0; lineIndex < rawLines.length; ++ lineIndex) {
                 const line = rawLines[lineIndex];
-                // expecting the JIT to optimize += better than array buffering
-                let newLine = '';
-                for (let index = 0; index < line.length; ++ index) {
-                    const prev = index;
-                    index = line.indexOf('\t', prev);
-                    if (index < 0) {
-                        newLine += line.slice(prev);
-                        break;
-                    }
+                let index = line.indexOf('\t');
+                if (index >= 0) {
+                    let prev = 0;
+                    // expecting the JIT to optimize += better than array buffering
+                    let newLine = '';
+                    for (;;) {
+                        newLine += line.slice(prev, index);
+                        const padding = tabW - (newLine.length % tabW);
+                        newLine += paddingChar.repeat(padding);
 
-                    newLine += line.slice(prev, index);
-                    const padding = tabW - (newLine.length % tabW);
-                    newLine += paddingChar.repeat(padding);
+                        ++ index;
+
+                        if (index > line.length) {
+                            break;
+                        }
+
+                        prev = index;
+                        index = line.indexOf('\t', prev);
+                        if (index < 0) {
+                            newLine += line.slice(prev);
+                            break;
+                        }
+                    }
+                    rawLines[lineIndex] = newLine;
                 }
-                rawLines[lineIndex] = newLine;
             }
 
             let maxPrefix = 0;
