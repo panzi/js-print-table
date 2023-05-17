@@ -362,7 +362,7 @@ export function formatTable(body: Table, { header, tabWidth, alignment, headerAl
                     } else {
                         align ||= '>';
                         isJson = true;
-                        strCell = JSON.stringify(cell, jsonReplacer, 4).
+                        strCell = JSON.stringify(cell, jsonReplacer, tabW).
                             replace(SpecialCharRegExp, stringControlReplacer);
                     }
                     break;
