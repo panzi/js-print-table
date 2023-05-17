@@ -16,7 +16,7 @@ export type FormatTableOptions = {
 };
 
 const AlignRegExp = /^[- .<>]*$/;
-const JsonLexRegExp = /("(?:\\["\\]|[^"])*"|'(?:\\['\\]|[^'])*')|(\btrue\b|\bfalse\b)|(\bnull\b|\bundefined\b)|(\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[-+]?\d{2}:?\d{2})?\b|\b-?[0-9]+(?:n\b|(?:\.[0-9]*)?(?:[eE][-+]?[0-9]+)?)|-?\bInfinity\b|\bNaN\b)|(<ref[^>]*>|\[[A-Za-z]+[^\]]*\])/g;
+const JsonLexRegExp = /("(?:\\["\\]|[^"])*"|'(?:\\['\\]|[^'])*')|(\btrue\b|\bfalse\b)|(\bnull\b|\bundefined\b)|(\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[-+]?\d{2}:?\d{2})?\b|\b-?[0-9]+(?:n\b|(?:\.[0-9]*)?(?:[eE][-+]?[0-9]+)?)|-?\bInfinity\b|\bNaN\b)|(<ref[^>]*>|\[(?:Function|Circular|Array|Object)[^\]]*\])|(Symbol\([^)]*\))/g;
 const JSEscapeRegExp = /\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4}|x[0-9a-fA-F]{2})/g;
 
 const WeightBold   = '\u001b[1m';
@@ -259,10 +259,11 @@ const StringColor   = ColorMagenta;
 const FunctionColor = ColorCyan;
 const EscapeColor   = ColorYellow;
 
-function jsonColorReplacer(all: string, str: string|undefined, bool: string|undefined, nul: string|undefined, num: string|undefined, other: string|undefined): string {
+function jsonColorReplacer(all: string, str: string|undefined, bool: string|undefined, nul: string|undefined, num: string|undefined, other: string|undefined, symbol: string|undefined): string {
     if (str) return StringColor + all.replace(JSEscapeRegExp, esc => EscapeColor + esc + StringColor) + ColorReset;
     if (nul) return NullColor + all + ColorReset;
     if (other) return FunctionColor + all + ColorReset;
+    if (symbol) return SymbolColor + all + ColorReset;
     return NumberColor + all + ColorReset;
 }
 
