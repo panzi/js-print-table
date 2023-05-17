@@ -1,8 +1,6 @@
 #!/usr/bin/env node
 import { printTable } from "../src/index.js";
 
-const color = !!process.stdout.isTTY;
-
 function addNumbers (a: number, b: number) {
     return a + b;
 }
@@ -41,5 +39,4 @@ printTable([
         'Value 2',
     ],
     columnBorders: true,
-    color,
 });

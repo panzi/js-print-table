@@ -1,8 +1,6 @@
 #!/usr/bin/env node
 import { printTable } from "../src/index.js";
 
-const color = !!process.stdout.isTTY;
-
 printTable([
     [
         'This text is left aligned.\n' +
@@ -28,7 +26,6 @@ printTable([
     columnBorders: true,
     rowBorders: true,
     outline: false,
-    color,
 });
 
 console.log();
@@ -41,5 +38,4 @@ printTable([
     alignment: '>-<',
     headerAlignment: '-<>',
     columnBorders: true,
-    color,
 });

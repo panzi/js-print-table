@@ -1,8 +1,6 @@
 #!/usr/bin/env node
 import { printTable, DoubleOutlineTableStyle } from "../src/index.js";
 
-const color = !!process.stdout.isTTY;
-
 printTable([
     ['Note 1:', 'The displayed character width depends on your terminal and on the used font.\n'+
               'Therefore the widths of non-latin 1 characters are pretty much guessed.\n' +
@@ -26,6 +24,5 @@ printTable([
     ['Latin NFKD', 'ÖÄÜöäüßẞ'],
     ['Control Characters', '\0 \r \v \f \u001b \x7f Tab: "\t"'],
 ], {
-    color,
     style: DoubleOutlineTableStyle
 });

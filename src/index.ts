@@ -5,7 +5,7 @@ export type FormatTableOptions = {
     readonly header?: ReadonlyArray<unknown>,
     readonly alignment?: string,
     readonly headerAlignment?: string,
-    readonly color?: boolean,
+    readonly colors?: boolean,
     readonly rowBorders?: boolean,
     readonly columnBorders?: boolean,
     readonly outline?: boolean,
@@ -256,7 +256,7 @@ interface LengthInfo {
     suffix: number;
 }
 
-export function formatTable(body: Table, { header, tabWidth, alignment, headerAlignment, color, outline, rowBorders, columnBorders, style, raw }: FormatTableOptions = DefaultOptions): string[] {
+export function formatTable(body: Table, { header, tabWidth, alignment, headerAlignment, colors, outline, rowBorders, columnBorders, style, raw }: FormatTableOptions = DefaultOptions): string[] {
     const maxlens: LengthInfo[] = [];
     const processed: ProcessedCell[][] = [];
 
@@ -296,10 +296,12 @@ export function formatTable(body: Table, { header, tabWidth, alignment, headerAl
         outlineNoBorderCrossing,
     } = style ? { ...DefaultTableStyle, ...style } : DefaultTableStyle;
 
-    if (color === undefined) {
-        color = typeof navigator !== "undefined" ?
-            !navigator.userAgent.includes("Firefox") :
-            true;
+    if (colors === undefined) {
+        colors = (
+            typeof navigator !== "undefined" ? navigator.userAgent.includes("Chrome") :
+            typeof process   !== "undefined" ? !!process.stdout?.isTTY :
+            false
+        );
     }
 
     const tabW = tabWidth ?? 4;
@@ -307,12 +309,12 @@ export function formatTable(body: Table, { header, tabWidth, alignment, headerAl
         throw new TypeError(`illegal tabWidth: ${tabWidth}`);
     }
 
-    const numberColor  = color ? ColorGreen   : '';
-    const nullColor    = color ? ColorBlue    : '';
-    const symbolColor  = color ? ColorRed     : '';
-    const stringColor  = color ? ColorMagenta : '';
-    const funcColor    = color ? ColorCyan    : '';
-    const escapeColor  = color ? ColorYellow  : '';
+    const numberColor  = colors ? ColorGreen   : '';
+    const nullColor    = colors ? ColorBlue    : '';
+    const symbolColor  = colors ? ColorRed     : '';
+    const stringColor  = colors ? ColorMagenta : '';
+    const funcColor    = colors ? ColorCyan    : '';
+    const escapeColor  = colors ? ColorYellow  : '';
 
     function processRow(row: ReadonlyArray<unknown>, alignment: string): ProcessedCell[] {
         const processedRow: ProcessedCell[] = [];
@@ -360,13 +362,8 @@ export function formatTable(body: Table, { header, tabWidth, alignment, headerAl
                     } else {
                         align ||= '>';
                         isJson = true;
-                        if (cell === null) {
-                            cellColor = nullColor;
-                            strCell = 'null';
-                        } else {
-                            strCell = JSON.stringify(cell, jsonReplacer, 4).
-                                replace(SpecialCharRegExp, stringControlReplacer);
-                        }
+                        strCell = JSON.stringify(cell, jsonReplacer, 4).
+                            replace(SpecialCharRegExp, stringControlReplacer);
                     }
                     break;
 
@@ -457,7 +454,7 @@ export function formatTable(body: Table, { header, tabWidth, alignment, headerAl
             if (isJson) {
                 for (const item of lines) {
                     let { line } = item;
-                    if (color) {
+                    if (colors) {
                         line = line.replace(JsonLexRegExp, (all, str, bool, nul, num) => {
                             if (str) return stringColor + all.replace(JsonEscapeRegExp, esc => escapeColor + esc + stringColor) + ColorReset;
                             if (nul) return nullColor + all + ColorReset;
@@ -469,7 +466,7 @@ export function formatTable(body: Table, { header, tabWidth, alignment, headerAl
                 }
             } else if (typeof cell === 'string') {
                 if (!raw) {
-                    if (color) {
+                    if (colors) {
                         for (const item of lines) {
                             item.line = item.line.
                                 replace(SpecialCharRegExp, stringControlReplacerWithColor);
@@ -483,7 +480,7 @@ export function formatTable(body: Table, { header, tabWidth, alignment, headerAl
                 }
             } else if (typeof cell === 'symbol') {
                 if (!raw) {
-                    if (color) {
+                    if (colors) {
                         for (const item of lines) {
                             item.line = item.line.
                                 replace(SpecialCharRegExp, symbolControlReplacerWithColor);
@@ -602,7 +599,7 @@ export function formatTable(body: Table, { header, tabWidth, alignment, headerAl
     const seperator = outline ? leftOutlineRowBorder + sepMid + rightOutlineRowBorder : sepMid;
 
     if (processedHeader) {
-        if (color) {
+        if (colors) {
             for (const cell of processedHeader) {
                 cell.color += WeightBold;
             }

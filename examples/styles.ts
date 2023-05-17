@@ -3,8 +3,6 @@ import { TableStyle } from "../src/index.js";
 
 const { formatTable, printTable, DefaultTableStyle, SpaceTableStyle, RoundedTableStyle, AsciiTableStyle, FatHeaderBorderTableStyle, DoubleOutlineTableStyle, FatOutlineTableStyle } = await import("../src/index.js");
 
-const color = !!process.stdout.isTTY;
-
 const styleTable: string[][] = [];
 const styleTableHeader: string[] = [''];
 
@@ -78,7 +76,6 @@ for (const [styleName, style] of [
             style,
             rowBorders,
             columnBorders,
-            color,
         }).join('\n');
 
         row.push(table);
@@ -94,7 +91,6 @@ for (const [styleName, style] of [
             style,
             rowBorders,
             columnBorders,
-            color,
         }).join('\n');
 
         row.push(table);
@@ -105,7 +101,6 @@ for (const [styleName, style] of [
 printTable(styleTable, {
     header: styleTableHeader,
     style: SpaceTableStyle,
-    color,
     rowBorders: false,
     columnBorders: false,
     raw: true,
