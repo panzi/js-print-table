@@ -249,7 +249,7 @@ function symbolControlReplacerWithColor(_: string, esc: string, contr: string): 
 }
 
 function jsonReplacer(_key: string, value: unknown): unknown {
-    return typeof value === 'bigint' ? String(value) : value;
+    return typeof value === 'bigint' || typeof value === 'symbol' ? String(value) : value;
 }
 
 const NumberColor   = ColorGreen;

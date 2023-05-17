@@ -33,7 +33,7 @@ const table: unknown[][] = [
         aFunc,
         anonFunc: () => {},
         undef: undefined,
-        sym: [Symbol("foo bar")],
+        sym: Symbol("foo bar"),
     }],
     ['undefined', undefined],
     ['Date', new Date(), new Date(0)],
