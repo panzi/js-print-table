@@ -12,11 +12,12 @@ export type FormatTableOptions = {
     readonly style?: Partial<Readonly<TableStyle>>,
     readonly raw?: boolean,
     readonly tabWidth?: number,
+    readonly formatCell?: (cell: unknown) => string,
 };
 
 const AlignRegExp = /^[- .<>]*$/;
-const JsonLexRegExp = /("(?:\\["\\]|[^"])*")|(\btrue\b|\bfalse\b)|(\bnull\b)|(-?[0-9]+(?:\.[0-9]*)?(?:[eE][-+]?[0-9]+)?)/g;
-const JsonEscapeRegExp = /\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4})/g;
+const JsonLexRegExp = /("(?:\\["\\]|[^"])*"|'(?:\\['\\]|[^'])*')|(\btrue\b|\bfalse\b)|(\bnull\b|\bundefined\b)|(\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[-+]?\d{2}:?\d{2})?\b|\b-?[0-9]+(?:n\b|(?:\.[0-9]*)?(?:[eE][-+]?[0-9]+)?)|-?\bInfinity\b|\bNaN\b)|(<ref[^>]*>|\[[A-Za-z]+[^\]]*\])/g;
+const JSEscapeRegExp = /\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4}|x[0-9a-fA-F]{2})/g;
 
 const WeightBold   = '\u001b[1m';
 const ColorReset   = '\u001b[0m';
@@ -251,12 +252,26 @@ function jsonReplacer(_key: string, value: unknown): unknown {
     return typeof value === 'bigint' ? String(value) : value;
 }
 
+const NumberColor   = ColorGreen;
+const NullColor     = ColorBlue;
+const SymbolColor   = ColorRed;
+const StringColor   = ColorMagenta;
+const FunctionColor = ColorCyan;
+const EscapeColor   = ColorYellow;
+
+function jsonColorReplacer(all: string, str: string|undefined, bool: string|undefined, nul: string|undefined, num: string|undefined, other: string|undefined): string {
+    if (str) return StringColor + all.replace(JSEscapeRegExp, esc => EscapeColor + esc + StringColor) + ColorReset;
+    if (nul) return NullColor + all + ColorReset;
+    if (other) return FunctionColor + all + ColorReset;
+    return NumberColor + all + ColorReset;
+}
+
 interface LengthInfo {
     prefix: number;
     suffix: number;
 }
 
-export function formatTable(body: Table, { header, tabWidth, alignment, headerAlignment, colors, outline, rowBorders, columnBorders, style, raw }: FormatTableOptions = DefaultOptions): string[] {
+export function formatTable(body: Table, { header, tabWidth, alignment, headerAlignment, colors, formatCell, outline, rowBorders, columnBorders, style, raw }: FormatTableOptions = DefaultOptions): string[] {
     const maxlens: LengthInfo[] = [];
     const processed: ProcessedCell[][] = [];
 
@@ -309,12 +324,12 @@ export function formatTable(body: Table, { header, tabWidth, alignment, headerAl
         throw new TypeError(`illegal tabWidth: ${tabWidth}`);
     }
 
-    const numberColor  = colors ? ColorGreen   : '';
-    const nullColor    = colors ? ColorBlue    : '';
-    const symbolColor  = colors ? ColorRed     : '';
-    const stringColor  = colors ? ColorMagenta : '';
-    const funcColor    = colors ? ColorCyan    : '';
-    const escapeColor  = colors ? ColorYellow  : '';
+    const numberColor  = colors ? NumberColor   : '';
+    const nullColor    = colors ? NullColor     : '';
+    const symbolColor  = colors ? SymbolColor   : '';
+    const funcColor    = colors ? FunctionColor : '';
+
+    const formatSimple = formatCell ?? String;
 
     function processRow(row: ReadonlyArray<unknown>, alignment: string): ProcessedCell[] {
         const processedRow: ProcessedCell[] = [];
@@ -333,36 +348,31 @@ export function formatTable(body: Table, { header, tabWidth, alignment, headerAl
                 case 'bigint':
                     align ||= '.';
                     cellColor = numberColor;
-                    strCell = String(cell);
+                    strCell = formatSimple(cell);
                     break;
 
                 case 'boolean':
                     align ||= '<';
                     cellColor = numberColor;
-                    strCell = String(cell);
+                    strCell = formatSimple(cell);
                     break;
 
                 case 'symbol':
                     align ||= '>';
                     cellColor = symbolColor;
-                    strCell = String(cell);
-                    break;
-
-                case 'function':
-                    align ||= '>';
-                    cellColor = funcColor;
-                    strCell = String(cell);
+                    strCell = formatSimple(cell);
                     break;
 
                 case 'object':
                     if (cell instanceof Date) {
                         align ||= '.';
                         cellColor = numberColor;
-                        strCell = cell.toISOString();
+                        strCell = formatCell ? formatCell(cell) : cell.toISOString();
                     } else {
                         align ||= '>';
                         isJson = true;
-                        strCell = JSON.stringify(cell, jsonReplacer, tabW).
+                        strCell = formatCell ? formatCell(cell) :
+                            JSON.stringify(cell, jsonReplacer, tabW).
                             replace(SpecialCharRegExp, stringControlReplacer);
                     }
                     break;
@@ -373,9 +383,21 @@ export function formatTable(body: Table, { header, tabWidth, alignment, headerAl
                     strCell = 'undefined';
                     break;
 
+                case 'string':
+                    align ||= '>';
+                    strCell = cell;
+                    break;
+
+                case 'function':
+                    align ||= '>';
+                    cellColor = funcColor;
+                    strCell = formatCell ? formatCell(cell) :
+                              cell.name ? `[Function: ${cell.name}]` : '[Function (anonymous)]';
+                    break;
+
                 default:
                     align ||= '>';
-                    strCell = String(cell);
+                    strCell = formatSimple(cell);
                     break;
             }
 
@@ -455,11 +477,7 @@ export function formatTable(body: Table, { header, tabWidth, alignment, headerAl
                 for (const item of lines) {
                     let { line } = item;
                     if (colors) {
-                        line = line.replace(JsonLexRegExp, (all, str, bool, nul, num) => {
-                            if (str) return stringColor + all.replace(JsonEscapeRegExp, esc => escapeColor + esc + stringColor) + ColorReset;
-                            if (nul) return nullColor + all + ColorReset;
-                            return numberColor + all + ColorReset;
-                        });
+                        line = line.replace(JsonLexRegExp, jsonColorReplacer);
                     }
                     item.line = line + paddingChar.repeat(maxPrefix - item.prefix);
                     item.prefix = maxPrefix;
