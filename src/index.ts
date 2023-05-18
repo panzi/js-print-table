@@ -2,16 +2,83 @@ type ProcessedLine = { prefix: number, suffix: number, line: string };
 type ProcessedCell = { align: string, lines: ProcessedLine[], color: string };
 
 export type FormatTableOptions = {
+    /**
+     * Array of titles printed in an extra header row.
+     */
     readonly header?: ReadonlyArray<unknown>,
+
+    /**
+     * Alignment of columns.
+     * 
+     * Alignments:
+     * 
+     * * `>` ... left aligned (default unless specified otherwise)
+     * * `<` ... right aligned (default for `boolean`)
+     * * `-` ... centered (default for headers unless specified otherwise)
+     * * `.` ... right aligned on the `.` (default for `number`, `bigint`, and `Date`)
+     * * ` ` ... use default (useful if you want to override the default of a later column, but not of an earlier one)
+     */
     readonly alignment?: string,
+
+    /**
+     * Alignment of header columns. If not specified defaults to same as `alignment`.
+     */
     readonly headerAlignment?: string,
+
+    /**
+     * Print with ANSI escape sequences for colors.
+     * 
+     * If not specified it tries to auto-detect via `navigator.userAgent.includes("Chrome")` or `process.stdout.isTTY`.
+     */
     readonly colors?: boolean,
+
+    /**
+     * Print horizontal borders between rows. (default: `false`)
+     * 
+     * There is always a border between the header row and the rest.
+     * If this option is used that border will be printed as a double-line or fatter, depending on the used style.
+     */
     readonly rowBorders?: boolean,
+
+    /**
+     * Print vertical borders between columns. (default: `false`)
+     * 
+     * If false there will still be a double space between columns, just not the visible border.
+     */
     readonly columnBorders?: boolean,
+
+    /**
+     * Print outline around the table. (default: `true`)
+     */
     readonly outline?: boolean,
+
+    /**
+     * Override style properties. (default: `DefaultTableStyle`)
+     * 
+     * @see @interface TableStyle
+     */
     readonly style?: Partial<Readonly<TableStyle>>,
+
+    /**
+     * Print raw cell values, i.e. don't escape ANSI escape sequences in the provided string cells.
+     */
     readonly raw?: boolean,
+
+    /**
+     * Width of a tab in string cells or of the indendation used with `JSON.stringify()`.
+     */
     readonly tabWidth?: number,
+
+    /**
+     * Format function to be called on non-string cells.
+     * 
+     * Per default objects are formatted using `JSON.stringify(cell, ..., tabWidth)`,
+     * functions as ``` `[Function: ${name}]` ```, dates via `cell.toISOString()`,
+     * and everything else just as `String(cell)`.
+     * 
+     * @param cell 
+     * @returns formatted cell
+     */
     readonly formatCell?: (cell: unknown) => string,
 };
 
@@ -227,7 +294,7 @@ export const FatOutlineTableStyle: Partial<Readonly<TableStyle>> = {
     outlineNoBorderCrossing: '━━',
 };
 
-const DefaultOptions: FormatTableOptions = {
+const DefaultOptions: Readonly<FormatTableOptions> = {
     outline: true,
     columnBorders: false,
     rowBorders: false,
@@ -272,7 +339,16 @@ interface LengthInfo {
     suffix: number;
 }
 
-export function formatTable(body: Table, { header, tabWidth, alignment, headerAlignment, colors, formatCell, outline, rowBorders, columnBorders, style, raw }: FormatTableOptions = DefaultOptions): string[] {
+/**
+ * Format a table into an array of lines.
+ * 
+ * @param body 
+ * @param options 
+ * @returns array of lines
+ */
+export function formatTable(body: Table, options: Readonly<FormatTableOptions> = DefaultOptions): string[] {
+    const { header, tabWidth, alignment, headerAlignment, formatCell, rowBorders, columnBorders, style, raw } = options;
+    let { outline, colors } = options;
     const maxlens: LengthInfo[] = [];
     const processed: ProcessedCell[][] = [];
 
@@ -662,24 +738,50 @@ export function formatTable(body: Table, { header, tabWidth, alignment, headerAl
     return lines;
 }
 
-export function printTable(body: Table, options: FormatTableOptions=DefaultOptions): void {
+/**
+ * Format and print a table using `console.log()`.
+ * 
+ * @param body 
+ * @param options 
+ */
+export function printTable(body: Table, options: Readonly<FormatTableOptions> = DefaultOptions): void {
     console.log(formatTable(body, options).join('\n'));
 }
 
 export type FormatTableOptionsFromObject = Omit<FormatTableOptions, 'headers'> & {
+    /**
+     * The columns to print. Per default all own properties are printed.
+     * 
+     * If a column is specified as a `string` the value is both the key to
+     * read from the object representing the row and the label in the header
+     * row.
+     * 
+     * If a column is `[string, string]` then the first value is the key
+     * and the second is the label.
+     */
     header?: ReadonlyArray<string | [key: string, label: string]>;
+
+    /**
+     * Add an index column.
+     */
     indexColumn?: boolean;
+    
+    /**
+     * The header label of the index column. (default: `"Index"`)
+     * 
+     * (Only has an effect if `indexColumn` is `true`.)
+     */
     indexColumnLabel?: string;
 };
 
-const DefaultOptionsFromObject: FormatTableOptionsFromObject = {
+const DefaultOptionsFromObject: Readonly<FormatTableOptionsFromObject> = {
     outline: true,
     columnBorders: false,
     rowBorders: false,
     style: DefaultTableStyle,
 };
 
-export function formatTableFromObjects(body: ReadonlyArray<{ [key: string]: unknown }>, options: FormatTableOptionsFromObject=DefaultOptionsFromObject): string[] {
+export function formatTableFromObjects(body: ReadonlyArray<{ readonly [key: string]: unknown }>, options: Readonly<FormatTableOptionsFromObject> = DefaultOptionsFromObject): string[] {
     const { header, indexColumn, indexColumnLabel } = options;
     const converted: unknown[][] = [];
     let convertedHeader: string[];
@@ -701,8 +803,10 @@ export function formatTableFromObjects(body: ReadonlyArray<{ [key: string]: unkn
     } else {
         const keySet = new Set<string>();
         for (const row of body) {
-            for (const key of Object.keys(row)) {
-                keySet.add(key);
+            for (const key in row) {
+                if (Object.hasOwn(row, key)) {
+                    keySet.add(key);
+                }
             }
         }
         keys = convertedHeader = Array.from(keySet);
@@ -731,6 +835,6 @@ export function formatTableFromObjects(body: ReadonlyArray<{ [key: string]: unkn
     return formatTable(converted, { ...options, header: convertedHeader });
 }
 
-export function printTableFromObjects(body: { [key: string]: unknown }[], options: FormatTableOptionsFromObject=DefaultOptionsFromObject): void {
+export function printTableFromObjects(body: ReadonlyArray<{ readonly [key: string]: unknown }>, options: Readonly<FormatTableOptionsFromObject> = DefaultOptionsFromObject): void {
     console.log(formatTableFromObjects(body, options).join('\n'));
 }
