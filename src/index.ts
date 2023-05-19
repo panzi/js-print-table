@@ -169,9 +169,13 @@ export interface TableStyle {
      */
     rightOutline: string;
 
+    /**
+     * Top outline of table between cells with border between columns, e.g. `'─┬─'`.
+     */
+    topOutlineColumnBorder: string;
+
     // TODO: more doc-comments
 
-    topOutlineColumnBorder: string;
     borderCrossing: string;
     noBorderCrossing: string;
     bottomOutlineColumnBorder: string;
