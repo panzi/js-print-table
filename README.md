@@ -6,8 +6,8 @@ Print Table
 [GitHub](https://github.com/panzi/js-print-table/)
 
 A library to print a nicely formatted table, because I didn't like `console.table()`.
-This has no dependencies whatsoever, though when colors are enabled it prints thise
-using ANSI escape sequences (which are supported by the console of Chromium based browsers).
+This library has no dependencies whatsoever, though when colors are enabled it prints
+ANSI escape sequences (which are supported by the console of Chromium based browsers).
 
 Example Usage
 -------------
