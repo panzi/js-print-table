@@ -138,12 +138,39 @@ const SpecialCharRegExp = /([\0\r\v\f])|([\u{0}-\u{9}\u{B}-\u{1F}\u{7F}-\u{9F}])
 // TODO: match more ANSI escape sequences
 const AnsiEscapeRegExp = /\u001b\[\d+(?:;\d+)*m/gu;
 
+/**
+ * A set of strings to use for printing table borders.
+ */
 export interface TableStyle {
+    /**
+     * Border between columns, e.g. `' │ '`.
+     */
     columnBorder: string;
+
+    /**
+     * Gap between columns if no border shall be printed, e.g. `'  '`.
+     */
     columnNoBorder: string;
+
+    /**
+     * Padding used to in alignment and indentation, e.g. `' '`.
+     * 
+     * This is meant to be once character wide.
+     */
     paddingChar: string;
+
+    /**
+     * Left outline of the table, e.g. `'│ '`.
+     */
     leftOutline: string;
+
+    /**
+     * Right outline of the table, e.g. `' │'`.
+     */
     rightOutline: string;
+
+    // TODO: more doc-comments
+
     topOutlineColumnBorder: string;
     borderCrossing: string;
     noBorderCrossing: string;
@@ -342,11 +369,11 @@ interface LengthInfo {
 /**
  * Format a table into an array of lines.
  * 
- * @param body 
+ * @param rows 
  * @param options 
  * @returns array of lines
  */
-export function formatTable(body: Table, options: Readonly<FormatTableOptions> = DefaultOptions): string[] {
+export function formatTable(rows: Table, options: Readonly<FormatTableOptions> = DefaultOptions): string[] {
     const { header, tabWidth, alignment, headerAlignment, formatCell, rowBorders, columnBorders, style, raw } = options;
     let { outline, colors } = options;
     const maxlens: LengthInfo[] = [];
@@ -408,7 +435,7 @@ export function formatTable(body: Table, options: Readonly<FormatTableOptions> =
 
     const formatSimple = formatCell ?? String;
 
-    function processRow(row: ReadonlyArray<unknown>, alignment: string): ProcessedCell[] {
+    function processRow(row: ReadonlyArray<unknown>, alignment: string, defaultAlignment: string): ProcessedCell[] {
         const processedRow: ProcessedCell[] = [];
         for (let cellIndex = 0; cellIndex < row.length; ++ cellIndex) {
             const maxlen = maxlens[cellIndex] ??= { prefix: 0, suffix: 0 };
@@ -435,7 +462,7 @@ export function formatTable(body: Table, options: Readonly<FormatTableOptions> =
                     break;
 
                 case 'symbol':
-                    align ||= '>';
+                    align ||= defaultAlignment;
                     cellColor = symbolColor;
                     strCell = formatSimple(cell);
                     break;
@@ -446,34 +473,34 @@ export function formatTable(body: Table, options: Readonly<FormatTableOptions> =
                         cellColor = numberColor;
                         strCell = formatCell ? formatCell(cell) : cell.toISOString();
                     } else {
-                        align ||= '>';
+                        align ||= defaultAlignment;
                         isJson = true;
                         strCell = formatCell ? formatCell(cell) :
-                            JSON.stringify(cell, jsonReplacer, tabW).
+                            JSON.stringify(cell, jsonReplacer, paddingChar.repeat(tabW)).
                             replace(SpecialCharRegExp, stringControlReplacer);
                     }
                     break;
 
                 case 'undefined':
-                    align ||= '>';
+                    align ||= defaultAlignment;
                     cellColor = nullColor;
                     strCell = 'undefined';
                     break;
 
                 case 'string':
-                    align ||= '>';
+                    align ||= defaultAlignment;
                     strCell = cell;
                     break;
 
                 case 'function':
-                    align ||= '>';
+                    align ||= defaultAlignment;
                     cellColor = funcColor;
                     strCell = formatCell ? formatCell(cell) :
                               cell.name ? `[Function: ${cell.name}]` : '[Function (anonymous)]';
                     break;
 
                 default:
-                    align ||= '>';
+                    align ||= defaultAlignment;
                     strCell = formatSimple(cell);
                     break;
             }
@@ -598,10 +625,10 @@ export function formatTable(body: Table, options: Readonly<FormatTableOptions> =
         return processedRow;
     }
 
-    const processedHeader = header ? processRow(header, headerAlignment ?? alignment ?? '') : null;
+    const processedHeader = header ? processRow(header, headerAlignment ?? alignment ?? '', '-') : null;
 
-    for (const row of body) {
-        processed.push(processRow(row, alignment ?? ''));
+    for (const row of rows) {
+        processed.push(processRow(row, alignment ?? '', '>'));
     }
 
     const colsep = columnBorders ? columnBorder : columnNoBorder;
@@ -741,11 +768,11 @@ export function formatTable(body: Table, options: Readonly<FormatTableOptions> =
 /**
  * Format and print a table using `console.log()`.
  * 
- * @param body 
+ * @param rows 
  * @param options 
  */
-export function printTable(body: Table, options: Readonly<FormatTableOptions> = DefaultOptions): void {
-    console.log(formatTable(body, options).join('\n'));
+export function printTable(rows: Table, options: Readonly<FormatTableOptions> = DefaultOptions): void {
+    console.log(formatTable(rows, options).join('\n'));
 }
 
 export type FormatTableOptionsFromObject = Omit<FormatTableOptions, 'headers'> & {
@@ -765,7 +792,7 @@ export type FormatTableOptionsFromObject = Omit<FormatTableOptions, 'headers'> &
      * Add an index column.
      */
     indexColumn?: boolean;
-    
+
     /**
      * The header label of the index column. (default: `"Index"`)
      * 
@@ -781,7 +808,16 @@ const DefaultOptionsFromObject: Readonly<FormatTableOptionsFromObject> = {
     style: DefaultTableStyle,
 };
 
-export function formatTableFromObjects(body: ReadonlyArray<{ readonly [key: string]: unknown }>, options: Readonly<FormatTableOptionsFromObject> = DefaultOptionsFromObject): string[] {
+export type ObjectList = ReadonlyArray<{ readonly [key: string]: unknown }>;
+
+/**
+ * Format a list of objects into an array of lines representing a table.
+ * 
+ * @param rows 
+ * @param options 
+ * @returns 
+ */
+export function formatTableFromObjects(rows: ObjectList, options: Readonly<FormatTableOptionsFromObject> = DefaultOptionsFromObject): string[] {
     const { header, indexColumn, indexColumnLabel } = options;
     const converted: unknown[][] = [];
     let convertedHeader: string[];
@@ -802,7 +838,7 @@ export function formatTableFromObjects(body: ReadonlyArray<{ readonly [key: stri
         }
     } else {
         const keySet = new Set<string>();
-        for (const row of body) {
+        for (const row of rows) {
             for (const key in row) {
                 if (Object.hasOwn(row, key)) {
                     keySet.add(key);
@@ -814,8 +850,8 @@ export function formatTableFromObjects(body: ReadonlyArray<{ readonly [key: stri
 
     if (indexColumn) {
         convertedHeader.unshift(indexColumnLabel ?? 'Index');
-        for (let index = 0; index < body.length; ++ index) {
-            const obj = body[index];
+        for (let index = 0; index < rows.length; ++ index) {
+            const obj = rows[index];
             const row: unknown[] = [index];
             for (const key of keys) {
                 row.push(key in obj ? obj[key] : '');
@@ -823,7 +859,7 @@ export function formatTableFromObjects(body: ReadonlyArray<{ readonly [key: stri
             converted.push(row);
         }
     } else {
-        for (const obj of body) {
+        for (const obj of rows) {
             const row: unknown[] = [];
             for (const key of keys) {
                 row.push(key in obj ? obj[key] : '');
@@ -835,6 +871,12 @@ export function formatTableFromObjects(body: ReadonlyArray<{ readonly [key: stri
     return formatTable(converted, { ...options, header: convertedHeader });
 }
 
-export function printTableFromObjects(body: ReadonlyArray<{ readonly [key: string]: unknown }>, options: Readonly<FormatTableOptionsFromObject> = DefaultOptionsFromObject): void {
-    console.log(formatTableFromObjects(body, options).join('\n'));
+/**
+ * Format and print list of objects as a table using `console.log()`.
+ * 
+ * @param rows 
+ * @param options 
+ */
+export function printTableFromObjects(rows: ObjectList, options: Readonly<FormatTableOptionsFromObject> = DefaultOptionsFromObject): void {
+    console.log(formatTableFromObjects(rows, options).join('\n'));
 }
