@@ -1,0 +1,6 @@
+/* custom tsdoc style */
+.tsd-typography pre,
+.tsd-typography pre code {
+    line-height: 1em;
+    white-space: pre;
+}
