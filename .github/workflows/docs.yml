@@ -11,6 +11,9 @@ on:
     - 'jest.config.js'
     - '.github/workflows/test.yml'
 
+permissions:
+  contents: write
+
 jobs:
   docs:
     runs-on: ubuntu-20.04
