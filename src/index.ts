@@ -174,15 +174,23 @@ export interface TableStyle {
      */
     topOutlineColumnBorder: string;
 
-    // TODO: more doc-comments
-
+    /**
+     * Crossing of borders between cells, e.g. `'─┼─'`.
+     */
     borderCrossing: string;
+
+    /**
+     * Crossing between cells without a border between columns, e.g. `'──'`.
+     */
     noBorderCrossing: string;
 
     /**
      * Bottom outline of table between cells with border between columns, e.g. `'─┴─'`.
      */
     bottomOutlineColumnBorder: string;
+
+    // TODO: more doc-comments
+
     topLeftOutline: string;
     bottomLeftOutline: string;
     topRightOutline: string;
