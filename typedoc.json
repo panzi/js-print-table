@@ -1,5 +1,6 @@
 {
     "name": "Print Table",
     "excludePrivate": true,
-    "gitRevision": "main"
+    "gitRevision": "main",
+    "customCss": "custom.css"
 }

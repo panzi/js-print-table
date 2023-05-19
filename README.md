@@ -36,11 +36,15 @@ printTable([
 123456	1 tab
 1234567	1 tab
 `],
-    ['symbol', Symbol("special chars:\n\0 \r \v \f \u001b \x7f"), Symbol.iterator],
+    ['symbol',
+     Symbol("special chars:\n\0 \r \v \f \u001b \x7f"),
+     Symbol.iterator],
     ['function', ()=>{}, aFunc],
     ['object', null, {
         key: "value",
-        array: [1, 2n, 12.34, true, false, null, "\0 \r \v \f", "\u001b \x7f\n", new Date()],
+        array: [1, 2n, 12.34, true, false, null,
+                "\0 \r \v \f", "\u001b \x7f\n",
+                new Date()],
         aFunc,
         anonFunc: () => {},
         undef: undefined,
@@ -64,7 +68,7 @@ Screenshot illustrating printing with colors:
 
 Plaintext output:
 
-```
+```text
 ┌───────────┬──────────────────────────────────┬──────────────────────────────────────────┐
 │   Type    │             Value 1              │                 Value 2                  │
 ├───────────┼──────────────────────────────────┼──────────────────────────────────────────┤

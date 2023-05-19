@@ -143,7 +143,7 @@ const AnsiEscapeRegExp = /\u001b\[\d+(?:;\d+)*m/gu;
  */
 export interface TableStyle {
     /**
-     * Border between columns, e.g. `' │ '`.
+     * Vertical border between columns, e.g. `' │ '`.
      */
     columnBorder: string;
 
@@ -175,12 +175,12 @@ export interface TableStyle {
     topOutlineColumnBorder: string;
 
     /**
-     * Crossing of borders between cells, e.g. `'─┼─'`.
+     * Crossing of row and column borders between cells, e.g. `'─┼─'`.
      */
     borderCrossing: string;
 
     /**
-     * Crossing between cells without a border between columns, e.g. `'──'`.
+     * Row border between cells without a border between columns, e.g. `'──'`.
      */
     noBorderCrossing: string;
 
@@ -199,22 +199,117 @@ export interface TableStyle {
      */
     bottomLeftOutline: string;
 
-    // TODO: more doc-comments
-
+    /**
+     * Outline of the top right corner of the table, e.g. `'─┐'`.
+     */
     topRightOutline: string;
+
+    /**
+     * Outline of the bottom right corner of the table, e.g. `'─┘'`.
+     */
     bottomRightOutline: string;
+
+    /**
+     * Horizontal border between rows, one character wide, e.g. `'─'`.
+     */
     rowBorder: string;
+
+    /**
+     * Horizontal outline of the table, one character wide, e.g. `'─'`.
+     */
     horizontalOutline: string;
+
+    /**
+     * Crossing of left table outline and horizontal row border, e.g. `'├─'`.
+     */
     leftOutlineRowBorder: string;
+
+    /**
+     * Crossing of right table outline and horizontal row border, e.g. `'─┤'`.
+     */
     rightOutlineRowBorder: string;
+
+    /**
+     * Crossing of left table outline and horizontal border between header and table body, e.g. `'╞═'`.
+     */
     leftHeaderRowBorder: string;
+
+    /**
+     * Crossing of left table outline and horizontal border between header and table body, e.g. `'═╡'`.
+     */
     rightHeaderRowBorder: string;
+
+    /**
+     * Horizontal border between header and table body, one character wide, e.g. `'═'`.
+     */
     headerBorder: string;
+
+    /**
+     * Crossing of header and column border between cells, e.g. `'═╪═'`.
+     */
     headerBorderCrossing: string;
+
+    /**
+     * Header row border between cells without a border between columns, e.g. `'══'`.
+     */
     headerNoBorderCrossing: string;
+
+    /**
+     * Table outline border between cells without a border between columns, e.g. `'──'`.
+     */
     outlineNoBorderCrossing: string;
 }
 
+/**
+ * TableStyle that is used per default. Any supplied table style can be partial
+ * and overrides the properties of this style.
+ * 
+ * ```text
+ * rowBorder: false
+ * columnBorder: false
+ * ┌──────────────┐
+ * │ Hdr 1  Hdr 2 │
+ * ├──────────────┤
+ * │ foo        0 │
+ * │ bar       12 │
+ * │ baz      345 │
+ * └──────────────┘
+ * 
+ * rowBorder: true
+ * columnBorder: false
+ * ┌──────────────┐
+ * │ Hdr 1  Hdr 2 │
+ * ╞══════════════╡
+ * │ foo        0 │
+ * ├──────────────┤
+ * │ bar       12 │
+ * ├──────────────┤
+ * │ baz      345 │
+ * └──────────────┘
+ * 
+ * rowBorder: false
+ * columnBorder: true
+ * ┌───────┬───────┐
+ * │ Hdr 1 │ Hdr 2 │
+ * ├───────┼───────┤
+ * │ foo   │     0 │
+ * │ bar   │    12 │
+ * │ baz   │   345 │
+ * └───────┴───────┘
+ * 
+ * rowBorder: true
+ * columnBorder: true
+ * ┌───────┬───────┐
+ * │ Hdr 1 │ Hdr 2 │
+ * ╞═══════╪═══════╡
+ * │ foo   │     0 │
+ * ├───────┼───────┤
+ * │ bar   │    12 │
+ * ├───────┼───────┤
+ * │ baz   │   345 │
+ * └───────┴───────┘
+ * ```
+ */
 export const DefaultTableStyle: Readonly<TableStyle> = {
     columnBorder: ' │ ',
     columnNoBorder: '  ',
@@ -241,6 +336,55 @@ export const DefaultTableStyle: Readonly<TableStyle> = {
     outlineNoBorderCrossing: '──',
 };
 
+/**
+ * All borders and outlines are just whitespace.
+ * 
+ * ```text
+ * rowBorder: false
+ * columnBorder: false
+ *                 
+ *   Hdr 1  Hdr 2  
+ *                 
+ *   foo        0  
+ *   bar       12  
+ *   baz      345  
+ *                 
+ * 
+ * rowBorder: true
+ * columnBorder: false
+ *                 
+ *   Hdr 1  Hdr 2  
+ *                 
+ *   foo        0  
+ *                 
+ *   bar       12  
+ *                 
+ *   baz      345  
+ *                 
+ * 
+ * rowBorder: false
+ * columnBorder: true
+ *                 
+ *   Hdr 1  Hdr 2  
+ *                 
+ *   foo        0  
+ *   bar       12  
+ *   baz      345  
+ *                 
+ * 
+ * rowBorder: true
+ * columnBorder: true
+ *                 
+ *   Hdr 1  Hdr 2  
+ *                 
+ *   foo        0  
+ *                 
+ *   bar       12  
+ *                 
+ *   baz      345  
+ *                 
+ * ```
+ */
 export const SpaceTableStyle: Readonly<TableStyle> = {
     columnBorder: '  ',
     columnNoBorder: '  ',
@@ -267,6 +411,55 @@ export const SpaceTableStyle: Readonly<TableStyle> = {
     outlineNoBorderCrossing: '  ',
 };
 
+/**
+ * Only use ASCII characters for the table outline and borders.
+ * 
+ * ```text
+ * rowBorder: false
+ * columnBorder: false
+ * +--------------+
+ * | Hdr 1  Hdr 2 |
+ * +--------------+
+ * | foo        0 |
+ * | bar       12 |
+ * | baz      345 |
+ * +--------------+
+ * 
+ * rowBorder: true
+ * columnBorder: false
+ * +--------------+
+ * | Hdr 1  Hdr 2 |
+ * |==============|
+ * | foo        0 |
+ * +--------------+
+ * | bar       12 |
+ * +--------------+
+ * | baz      345 |
+ * +--------------+
+ * 
+ * rowBorder: false
+ * columnBorder: true
+ * +---------------+
+ * | Hdr 1 | Hdr 2 |
+ * +-------+-------+
+ * | foo   |     0 |
+ * | bar   |    12 |
+ * | baz   |   345 |
+ * +---------------+
+ * 
+ * rowBorder: true
+ * columnBorder: true
+ * +---------------+
+ * | Hdr 1 | Hdr 2 |
+ * |===============|
+ * | foo   |     0 |
+ * +-------+-------+
+ * | bar   |    12 |
+ * +-------+-------+
+ * | baz   |   345 |
+ * +---------------+
+ * ```
+ */
 export const AsciiTableStyle: Readonly<TableStyle> = {
     columnBorder: ' | ',
     columnNoBorder: '  ',
@@ -293,6 +486,55 @@ export const AsciiTableStyle: Readonly<TableStyle> = {
     outlineNoBorderCrossing: '--',
 };
 
+/**
+ * Use rounded corners.
+ * 
+ * ```text
+ * rowBorder: false
+ * columnBorder: false
+ * ╭──────────────╮
+ * │ Hdr 1  Hdr 2 │
+ * ├──────────────┤
+ * │ foo        0 │
+ * │ bar       12 │
+ * │ baz      345 │
+ * ╰──────────────╯
+ * 
+ * rowBorder: true
+ * columnBorder: false
+ * ╭──────────────╮
+ * │ Hdr 1  Hdr 2 │
+ * ╞══════════════╡
+ * │ foo        0 │
+ * ├──────────────┤
+ * │ bar       12 │
+ * ├──────────────┤
+ * │ baz      345 │
+ * ╰──────────────╯
+ * 
+ * rowBorder: false
+ * columnBorder: true
+ * ╭───────┬───────╮
+ * │ Hdr 1 │ Hdr 2 │
+ * ├───────┼───────┤
+ * │ foo   │     0 │
+ * │ bar   │    12 │
+ * │ baz   │   345 │
+ * ╰───────┴───────╯
+ * 
+ * rowBorder: true
+ * columnBorder: true
+ * ╭───────┬───────╮
+ * │ Hdr 1 │ Hdr 2 │
+ * ╞═══════╪═══════╡
+ * │ foo   │     0 │
+ * ├───────┼───────┤
+ * │ bar   │    12 │
+ * ├───────┼───────┤
+ * │ baz   │   345 │
+ * ╰───────┴───────╯
+ * ```
+ */
 export const RoundedTableStyle: Partial<Readonly<TableStyle>> = {
     topLeftOutline:     '╭─',
     bottomLeftOutline:  '╰─',
@@ -300,6 +542,55 @@ export const RoundedTableStyle: Partial<Readonly<TableStyle>> = {
     bottomRightOutline: '─╯',
 };
 
+/**
+ * When `rowBorders` is `true`, use a fat line between the header and the body instead of a double line.
+ * 
+ * ```text
+ * rowBorder: false
+ * columnBorder: false
+ * ┌──────────────┐
+ * │ Hdr 1  Hdr 2 │
+ * ├──────────────┤
+ * │ foo        0 │
+ * │ bar       12 │
+ * │ baz      345 │
+ * └──────────────┘
+ * 
+ * rowBorder: true
+ * columnBorder: false
+ * ┌──────────────┐
+ * │ Hdr 1  Hdr 2 │
+ * ┝━━━━━━━━━━━━━━┥
+ * │ foo        0 │
+ * ├──────────────┤
+ * │ bar       12 │
+ * ├──────────────┤
+ * │ baz      345 │
+ * └──────────────┘
+ * 
+ * rowBorder: false
+ * columnBorder: true
+ * ┌───────┬───────┐
+ * │ Hdr 1 │ Hdr 2 │
+ * ├───────┼───────┤
+ * │ foo   │     0 │
+ * │ bar   │    12 │
+ * │ baz   │   345 │
+ * └───────┴───────┘
+ * 
+ * rowBorder: true
+ * columnBorder: true
+ * ┌───────┬───────┐
+ * │ Hdr 1 │ Hdr 2 │
+ * ┝━━━━━━━┿━━━━━━━┥
+ * │ foo   │     0 │
+ * ├───────┼───────┤
+ * │ bar   │    12 │
+ * ├───────┼───────┤
+ * │ baz   │   345 │
+ * └───────┴───────┘
+ * ```
+ */
 export const FatHeaderBorderTableStyle: Partial<Readonly<TableStyle>> = {
     leftHeaderRowBorder:   '┝━',
     rightHeaderRowBorder:  '━┥',
@@ -308,6 +599,55 @@ export const FatHeaderBorderTableStyle: Partial<Readonly<TableStyle>> = {
     headerNoBorderCrossing: '━━',
 };
 
+/**
+ * Use a double line for the outline around the table.
+ * 
+ * ```text
+ * rowBorder: false
+ * columnBorder: false
+ * ╔══════════════╗
+ * ║ Hdr 1  Hdr 2 ║
+ * ╟──────────────╢
+ * ║ foo        0 ║
+ * ║ bar       12 ║
+ * ║ baz      345 ║
+ * ╚══════════════╝
+ * 
+ * rowBorder: true
+ * columnBorder: false
+ * ╔══════════════╗
+ * ║ Hdr 1  Hdr 2 ║
+ * ╠══════════════╣
+ * ║ foo        0 ║
+ * ╟──────────────╢
+ * ║ bar       12 ║
+ * ╟──────────────╢
+ * ║ baz      345 ║
+ * ╚══════════════╝
+ * 
+ * rowBorder: false
+ * columnBorder: true
+ * ╔═══════╤═══════╗
+ * ║ Hdr 1 │ Hdr 2 ║
+ * ╟───────┼───────╢
+ * ║ foo   │     0 ║
+ * ║ bar   │    12 ║
+ * ║ baz   │   345 ║
+ * ╚═══════╧═══════╝
+ * 
+ * rowBorder: true
+ * columnBorder: true
+ * ╔═══════╤═══════╗
+ * ║ Hdr 1 │ Hdr 2 ║
+ * ╠═══════╪═══════╣
+ * ║ foo   │     0 ║
+ * ╟───────┼───────╢
+ * ║ bar   │    12 ║
+ * ╟───────┼───────╢
+ * ║ baz   │   345 ║
+ * ╚═══════╧═══════╝
+ * ```
+ */
 export const DoubleOutlineTableStyle: Partial<Readonly<TableStyle>> = {
     leftOutline: '║ ',
     rightOutline: ' ║',
@@ -325,6 +665,55 @@ export const DoubleOutlineTableStyle: Partial<Readonly<TableStyle>> = {
     outlineNoBorderCrossing: '══',
 };
 
+/**
+ * Use a fat line for the outline around the table and for the border between the header and body.
+ * 
+ * ```text
+ * rowBorder: false
+ * columnBorder: false
+ * ┏━━━━━━━━━━━━━━┓
+ * ┃ Hdr 1  Hdr 2 ┃
+ * ┠──────────────┨
+ * ┃ foo        0 ┃
+ * ┃ bar       12 ┃
+ * ┃ baz      345 ┃
+ * ┗━━━━━━━━━━━━━━┛
+ * 
+ * rowBorder: true
+ * columnBorder: false
+ * ┏━━━━━━━━━━━━━━┓
+ * ┃ Hdr 1  Hdr 2 ┃
+ * ┣━━━━━━━━━━━━━━┫
+ * ┃ foo        0 ┃
+ * ┠──────────────┨
+ * ┃ bar       12 ┃
+ * ┠──────────────┨
+ * ┃ baz      345 ┃
+ * ┗━━━━━━━━━━━━━━┛
+ * 
+ * rowBorder: false
+ * columnBorder: true
+ * ┏━━━━━━━┯━━━━━━━┓
+ * ┃ Hdr 1 │ Hdr 2 ┃
+ * ┠───────┼───────┨
+ * ┃ foo   │     0 ┃
+ * ┃ bar   │    12 ┃
+ * ┃ baz   │   345 ┃
+ * ┗━━━━━━━┷━━━━━━━┛
+ * 
+ * rowBorder: true
+ * columnBorder: true
+ * ┏━━━━━━━┯━━━━━━━┓
+ * ┃ Hdr 1 │ Hdr 2 ┃
+ * ┣━━━━━━━┿━━━━━━━┫
+ * ┃ foo   │     0 ┃
+ * ┠───────┼───────┨
+ * ┃ bar   │    12 ┃
+ * ┠───────┼───────┨
+ * ┃ baz   │   345 ┃
+ * ┗━━━━━━━┷━━━━━━━┛
+ * ```
+ */
 export const FatOutlineTableStyle: Partial<Readonly<TableStyle>> = {
     leftOutline: '┃ ',
     rightOutline: ' ┃',
@@ -345,7 +734,7 @@ export const FatOutlineTableStyle: Partial<Readonly<TableStyle>> = {
     outlineNoBorderCrossing: '━━',
 };
 
-const DefaultOptions: Readonly<FormatTableOptions> = {
+export const DefaultOptions: Readonly<FormatTableOptions> = {
     outline: true,
     columnBorders: false,
     rowBorders: false,
@@ -825,7 +1214,7 @@ export type FormatTableOptionsFromObject = Omit<FormatTableOptions, 'headers'> &
     indexColumnLabel?: string;
 };
 
-const DefaultOptionsFromObject: Readonly<FormatTableOptionsFromObject> = {
+export const DefaultOptionsFromObject: Readonly<FormatTableOptionsFromObject> = {
     outline: true,
     columnBorders: false,
     rowBorders: false,
