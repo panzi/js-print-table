@@ -194,9 +194,13 @@ export interface TableStyle {
      */
     topLeftOutline: string;
 
+    /**
+     * Outline of the bottom left corner of the table, e.g. `'└─'`.
+     */
+    bottomLeftOutline: string;
+
     // TODO: more doc-comments
 
-    bottomLeftOutline: string;
     topRightOutline: string;
     bottomRightOutline: string;
     rowBorder: string;

@@ -58,7 +58,11 @@ printTable([
 });
 ```
 
-Output:
+Screenshot illustrating printing with colors:
+
+![Screenshot](screenshot.png)
+
+Plaintext output:
 
 ```
 ┌───────────┬──────────────────────────────────┬──────────────────────────────────────────┐
@@ -103,7 +107,3 @@ Output:
 │ Date      │        2023-05-19T01:50:11.308Z  │                1970-01-01T00:00:00.000Z  │
 └───────────┴──────────────────────────────────┴──────────────────────────────────────────┘
 ```
-
-Screenshot illustrating printing with colors:
-
-![Screenshot](screenshot.png)
