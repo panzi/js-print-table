@@ -178,6 +178,10 @@ export interface TableStyle {
 
     borderCrossing: string;
     noBorderCrossing: string;
+
+    /**
+     * Bottom outline of table between cells with border between columns, e.g. `'─┴─'`.
+     */
     bottomOutlineColumnBorder: string;
     topLeftOutline: string;
     bottomLeftOutline: string;
