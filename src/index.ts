@@ -200,11 +200,11 @@ declare global {
 // \u{FEFF} zero-width no-break space
 const IgnoreRegExp = /\p{Nonspacing_Mark}|\p{Default_Ignorable_Code_Point}|[\u{FE00}-\u{FE0F}\u{200B}-\u{200D}\u{2060}\u{FEFF}]/gu;
 
-// \u{3040}-\u{A4CF} I don't really know. guessed asian scripts
+// \u{3040}-\u{A4CF} I don't really know. Guessed Asian scripts
 // \u{AC00}-\u{D7FF} Korean Hangul
 // \u{20000}-\u{323AF} CJK Unified Ideographs Extensions
-// \u{FF01}-\u{FF60} asian full-width characters
-// \u{FFE0}-\u{FFE6} asian full-width characters
+// \u{FF01}-\u{FF60} Asian full-width characters
+// \u{FFE0}-\u{FFE6} Asian full-width characters
 const DoubleWidthRegExp = /\p{Emoji_Presentation}|[\u{3040}-\u{A4CF}\u{AC00}-\u{D7FF}\u{20000}-\u{323AF}\u{FF01}-\u{FF60}\u{FFE0}-\u{FFE6}\0\r\v\f]/gu;
 
 const SurrogatePairRegExp = /[\u{D800}-\u{10FFFF}]/gu;

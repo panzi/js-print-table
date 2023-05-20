@@ -9,6 +9,9 @@ A library to print a nicely formatted table, because I didn't like `console.tabl
 This library has no dependencies whatsoever, though when colors are enabled it prints
 ANSI escape sequences (which are supported by the console of Chromium based browsers).
 
+The table style (what kind of border line characters are used) and the colors (e.g.
+ANSI escape sequences) can be overridden to your liking.
+
 Example Usage
 -------------
 
@@ -111,3 +114,32 @@ Plaintext output:
 │ Date      │        2023-05-19T01:50:11.308Z  │                1970-01-01T00:00:00.000Z  │
 └───────────┴──────────────────────────────────┴──────────────────────────────────────────┘
 ```
+
+See the [examples](examples) folder for more.
+
+Character Width
+---------------
+
+This library tries to guess the correct width of any printted character. This is
+error prone, since it actually would depend on the used terminal emulator, installed
+fonts, and supported Unicode version of those and of NodeJS. Emojis and certain
+natural languages have characters that are printed as double wide in most terminals.
+These characters are detected via regular expressions. `\p{Emoji_Presentation}` is
+used for emojis and these character ranges for certain Asian scripts are used:
+
+* U+0AC00 ... U+0D7FF Korean Hangul
+* U+03040 ... U+0A4CF other Asian characters, probably inprecise
+* U+0FF01 ... U+0FF60 Asian full-width characters
+* U+0FFE0 ... U+0FFE6 Asian full-width characters
+* U+20000 ... U+323AF CJK Unified Ideographs Extensions
+
+**TODO:** There might be more ranges that need to be added here.
+
+For zero-width characters and other code-points that aren't directly printed the
+regular expressions `\p{Nonspacing_Mark}` and `\p{Default_Ignorable_Code_Point}`
+and these character ranges are used:
+
+* U+200B ... U+200D zero width space, zero-width non-joiner, zero-width joiner
+* U+2060 word joiner
+* U+FE00 ... U+FE0F variant selectors
+* U+FEFF zero-width no-break space
