@@ -143,3 +143,8 @@ and these character ranges are used:
 * U+2060 word joiner
 * U+FE00 ... U+FE0F variant selectors
 * U+FEFF zero-width no-break space
+
+Because how this all is done using regular expressions it is probably not extremely
+efficient (I did not do any profiling or speed comparison to other similar libraries).
+But since this is for displaying a couple of values to humans it is in any case fast
+enough.
