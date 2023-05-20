@@ -1,6 +1,59 @@
 type ProcessedLine = { prefix: number, suffix: number, line: string };
 type ProcessedCell = { align: string, lines: ProcessedLine[], color: string };
 
+export interface Colors {
+    /**
+     * Color code for values of type `number` and `bigint`.
+     */
+    number: string;
+
+    /**
+     * Color for `null` and `undefined` values.
+     */
+    null: string;
+
+    /**
+     * Color for strings inside of JSON. Plain string cells have no color.
+     */
+    string: string;
+
+    /**
+     * Color for values of type `string`.
+     */
+    symbol: string;
+
+    /**
+     * Color for values of type `function`.
+     */
+    function: string;
+
+    /**
+     * Color for circular references, abbreviated arrays and the tag for objects with null prototypes.
+     * This is only effective for when NodeJS' `inspect` function is passed as `formatCell`.
+     */
+    other: string;
+
+    /**
+     * Color for escape sequences in strings (string cells and stirngs inside of JSON) and symbols.
+     */
+    escape: string;
+
+    /**
+     * Color for values of type `boolean`.
+     */
+    boolean: string;
+
+    /**
+     * Additional color code for headers. By default this is used to make headers bold.
+     */
+    header: string;
+
+    /**
+     * Reset any color codes or other formatting.
+     */
+    reset: string;
+}
+
 export type FormatTableOptions = {
     /**
      * Array of titles printed in an extra header row.
@@ -30,7 +83,7 @@ export type FormatTableOptions = {
      * 
      * If not specified it tries to auto-detect via `navigator.userAgent.includes("Chrome")` or `process.stdout.isTTY`.
      */
-    readonly colors?: boolean,
+    readonly colors?: boolean|Partial<Readonly<Colors>>,
 
     /**
      * Print horizontal borders between rows. (default: `false`)
@@ -83,11 +136,11 @@ export type FormatTableOptions = {
 };
 
 const AlignRegExp = /^[- .<>]*$/;
-const JsonLexRegExp = /("(?:\\["\\]|[^"])*"|'(?:\\['\\]|[^'])*')|(\btrue\b|\bfalse\b)|(\bnull\b|\bundefined\b)|(\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[-+]?\d{2}:?\d{2})?\b|\b-?[0-9]+(?:n\b|(?:\.[0-9]*)?(?:[eE][-+]?[0-9]+)?)|-?\bInfinity\b|\bNaN\b)|(<ref[^>]*>|\[(?:Function|Circular|Array|Object)[^\]]*\])|(Symbol\([^)]*\))/g;
+const JsonLexRegExp = /("(?:\\["\\]|[^"])*"|'(?:\\['\\]|[^'])*')|(\btrue\b|\bfalse\b)|(\bnull\b|\bundefined\b)|(\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[-+]?\d{2}:?\d{2})?\b|\b-?[0-9]+(?:n\b|(?:\.[0-9]*)?(?:[eE][-+]?[0-9]+)?)|-?\bInfinity\b|\bNaN\b)|(\[Function[^\]]*\])|(<ref[^>]*>|\[(?:Function|Circular|Array|Object)[^\]]*\])|(Symbol\([^)]*\))/g;
 const JSEscapeRegExp = /\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4}|x[0-9a-fA-F]{2})/g;
 
 const WeightBold   = '\u001b[1m';
-const ColorReset   = '\u001b[0m';
+const ResetFormat  = '\u001b[0m';
 // const ColorBlack   = '\u001b[30m';
 const ColorRed     = '\u001b[31m';
 const ColorGreen   = '\u001b[32m';
@@ -104,6 +157,38 @@ const ColorCyan    = '\u001b[36m';
 // const ColorBrightMagenta = '\u001b[35;1m';
 // const ColorBrightCyan    = '\u001b[36;1m';
 // const ColorBrightWhite   = '\u001b[37;1m';
+
+/**
+ * ANSI escape sequences for colors.
+ */
+export const AnsiColors: Readonly<Colors> = {
+    number:    ColorGreen,
+    null:      ColorBlue,
+    string:    ColorMagenta,
+    symbol:    ColorRed,
+    function:  ColorCyan,
+    other:     ColorCyan,
+    escape:    ColorYellow,
+    boolean:   ColorGreen,
+    header:    WeightBold,
+    reset:     ResetFormat,
+};
+
+/**
+ * No color codes at all, just empty strings.
+ */
+export const NoColors: Readonly<Colors> = {
+    number:    '',
+    null:      '',
+    string:    '',
+    symbol:    '',
+    function:  '',
+    other:     '',
+    escape:    '',
+    boolean:   '',
+    header:    '',
+    reset:     '',
+};
 
 declare global {
     var navigator: { userAgent: string }|undefined;
@@ -747,31 +832,8 @@ function stringControlReplacer(_: string, esc: string, contr: string): string {
     return esc ? CharReplacement[esc] : '\\u' + contr.charCodeAt(0).toString(16).padStart(4, '0');
 }
 
-function stringControlReplacerWithColor(_: string, esc: string, contr: string): string {
-    return ColorYellow + (esc ? CharReplacement[esc] : '\\u' + contr.charCodeAt(0).toString(16).padStart(4, '0')) + ColorReset;
-}
-
-function symbolControlReplacerWithColor(_: string, esc: string, contr: string): string {
-    return ColorYellow + (esc ? CharReplacement[esc] : '\\u' + contr.charCodeAt(0).toString(16).padStart(4, '0')) + ColorRed;
-}
-
 function jsonReplacer(_key: string, value: unknown): unknown {
     return typeof value === 'bigint' || typeof value === 'symbol' ? String(value) : value;
-}
-
-const NumberColor   = ColorGreen;
-const NullColor     = ColorBlue;
-const SymbolColor   = ColorRed;
-const StringColor   = ColorMagenta;
-const FunctionColor = ColorCyan;
-const EscapeColor   = ColorYellow;
-
-function jsonColorReplacer(all: string, str: string|undefined, bool: string|undefined, nul: string|undefined, num: string|undefined, other: string|undefined, symbol: string|undefined): string {
-    if (str) return StringColor + all.replace(JSEscapeRegExp, esc => EscapeColor + esc + StringColor) + ColorReset;
-    if (nul) return NullColor + all + ColorReset;
-    if (other) return FunctionColor + all + ColorReset;
-    if (symbol) return SymbolColor + all + ColorReset;
-    return NumberColor + all + ColorReset;
 }
 
 interface LengthInfo {
@@ -836,15 +898,46 @@ export function formatTable(rows: Table, options: Readonly<FormatTableOptions> =
         );
     }
 
+    const colorMap: Readonly<Colors> =
+        colors === true ? AnsiColors :
+        !colors ? NoColors :
+        { ...AnsiColors, ...colors };
+
     const tabW = tabWidth ?? 4;
     if (tabW < 1 || (tabW|0) !== tabW) {
         throw new TypeError(`illegal tabWidth: ${tabWidth}`);
     }
 
-    const numberColor  = colors ? NumberColor   : '';
-    const nullColor    = colors ? NullColor     : '';
-    const symbolColor  = colors ? SymbolColor   : '';
-    const funcColor    = colors ? FunctionColor : '';
+    const {
+        boolean:  boolColor,
+        escape:   escColor,
+        string:   strColor,
+        function: funcColor,
+        header:   hdrColor,
+        null:     nullColor,
+        number:   numColor,
+        other:    otherColor,
+        reset:    resetFormat,
+        symbol:   symColor,
+    } = colorMap;
+
+    function jsonColorReplacer(all: string, str: string|undefined, bool: string|undefined, nul: string|undefined, num: string|undefined, func: string|undefined, other: string|undefined, symbol: string|undefined): string {
+        if (str)    return strColor + all.replace(JSEscapeRegExp, esc => escColor + esc + strColor) + resetFormat;
+        if (nul)    return nullColor + all + resetFormat;
+        if (func)   return funcColor + all + resetFormat;
+        if (other)  return otherColor + all + resetFormat;
+        if (symbol) return symColor + all + resetFormat;
+        if (num)    return numColor + all + resetFormat;
+        return boolColor + all + resetFormat;
+    }
+
+    function stringControlReplacerWithColor(_: string, esc: string, contr: string): string {
+        return escColor + (esc ? CharReplacement[esc] : '\\u' + contr.charCodeAt(0).toString(16).padStart(4, '0')) + resetFormat;
+    }
+
+    function symbolControlReplacerWithColor(_: string, esc: string, contr: string): string {
+        return escColor + (esc ? CharReplacement[esc] : '\\u' + contr.charCodeAt(0).toString(16).padStart(4, '0')) + symColor;
+    }
 
     const formatSimple = formatCell ?? String;
 
@@ -864,26 +957,26 @@ export function formatTable(rows: Table, options: Readonly<FormatTableOptions> =
                 case 'number':
                 case 'bigint':
                     align ||= '.';
-                    cellColor = numberColor;
+                    cellColor = numColor;
                     strCell = formatSimple(cell);
                     break;
 
                 case 'boolean':
                     align ||= '<';
-                    cellColor = numberColor;
+                    cellColor = boolColor;
                     strCell = formatSimple(cell);
                     break;
 
                 case 'symbol':
                     align ||= defaultAlignment;
-                    cellColor = symbolColor;
+                    cellColor = symColor;
                     strCell = formatSimple(cell);
                     break;
 
                 case 'object':
                     if (cell instanceof Date) {
                         align ||= '.';
-                        cellColor = numberColor;
+                        cellColor = numColor;
                         strCell = formatCell ? formatCell(cell) : cell.toISOString();
                     } else {
                         align ||= defaultAlignment;
@@ -1079,7 +1172,7 @@ export function formatTable(rows: Table, options: Readonly<FormatTableOptions> =
                 let { line } = item;
 
                 if (color) {
-                    line = color + line + ColorReset;
+                    line = color + line + resetFormat;
                 }
 
                 if (align === '-') {
@@ -1136,7 +1229,7 @@ export function formatTable(rows: Table, options: Readonly<FormatTableOptions> =
     if (processedHeader) {
         if (colors) {
             for (const cell of processedHeader) {
-                cell.color += WeightBold;
+                cell.color += hdrColor;
             }
         }
 
