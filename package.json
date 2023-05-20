@@ -1,5 +1,5 @@
 {
-  "name": "printtable",
+  "name": "@panzi/print-table",
   "version": "1.0.0",
   "description": "Print tabular data in a nice table.",
   "main": "./build/index.js",
