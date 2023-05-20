@@ -5,11 +5,16 @@
   "main": "./build/index.js",
   "types": "./build/index.d.ts",
   "type": "module",
+  "homepage": "https://panzi.github.io/js-print-table/",
+  "repository": {
+    "url": "https://github.com/panzi/js-print-table",
+    "type": "git"
+  },
   "scripts": {
     "tsc": "tsc",
     "build:examples": "rm -r build 2>/dev/null; tsc && chmod a+x ./build/examples/*.js",
     "build:release": "rm -r build 2>/dev/null; set -eo pipefail; trap 'rm tsconfig-release.json' EXIT; jq < tsconfig.json '.include = [\"./src/**/*.ts\"]' > tsconfig-release.json && tsc -p tsconfig-release.json",
-    "build:doc": "typedoc src/index.ts && cp screenshot.png docs/"
+    "build:doc": "typedoc src/index.ts && cp screenshot.png doc-src/* docs/"
   },
   "keywords": [
     "print",
