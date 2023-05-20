@@ -14,7 +14,7 @@
     "tsc": "tsc",
     "build:examples": "rm -r build 2>/dev/null; tsc && chmod a+x ./build/examples/*.js",
     "build:release": "rm -r build 2>/dev/null; set -eo pipefail; trap 'rm tsconfig-release.json' EXIT; jq < tsconfig.json '.include = [\"./src/**/*.ts\"]' > tsconfig-release.json && tsc -p tsconfig-release.json",
-    "build:doc": "typedoc src/index.ts && cp screenshot.png doc-src/* docs/"
+    "build:doc": "typedoc src/index.ts && cp -r screenshot.png doc-src/* docs/"
   },
   "keywords": [
     "print",
