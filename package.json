@@ -1,6 +1,6 @@
 {
   "name": "@panzi/print-table",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Print tabular data in a nice unicode table.",
   "main": "./build/index.js",
   "types": "./build/index.d.ts",
