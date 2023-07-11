@@ -120,7 +120,7 @@ See the [examples](examples) folder for more.
 Character Width
 ---------------
 
-This library tries to guess the correct width of any printted character. This is
+This library tries to guess the correct width of any printed character. This is
 error prone, since it actually would depend on the used terminal emulator, installed
 fonts, and supported Unicode version of those and of NodeJS. Emojis and certain
 natural languages have characters that are printed as double wide in most terminals.
