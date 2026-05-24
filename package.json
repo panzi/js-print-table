@@ -7,7 +7,7 @@
   "type": "module",
   "homepage": "https://panzi.github.io/js-print-table/",
   "repository": {
-    "url": "https://github.com/panzi/js-print-table",
+    "url": "git+https://github.com/panzi/js-print-table.git",
     "type": "git"
   },
   "scripts": {
