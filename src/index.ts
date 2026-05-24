@@ -190,10 +190,6 @@ export const NoColors: Readonly<Colors> = {
     reset:     '',
 };
 
-declare global {
-    var navigator: { userAgent: string }|undefined;
-}
-
 // \u{FE00}-\u{FE0F} variant selectors
 // \u{200B}-\u{200D} zero width space, zero-width non-joiner, zero-width joiner
 // \u{2060} word joiner
@@ -205,13 +201,19 @@ const IgnoreRegExp = /\p{Nonspacing_Mark}|\p{Default_Ignorable_Code_Point}|[\u{F
 // \u{20000}-\u{323AF} CJK Unified Ideographs Extensions
 // \u{FF01}-\u{FF60} Asian full-width characters
 // \u{FFE0}-\u{FFE6} Asian full-width characters
-const DoubleWidthRegExp = /\p{Emoji_Presentation}|[\u{3040}-\u{A4CF}\u{AC00}-\u{D7FF}\u{20000}-\u{323AF}\u{FF01}-\u{FF60}\u{FFE0}-\u{FFE6}\0\r\v\f]/gu;
+// \u{2300}-\u{23FF} Miscellaneous Technical
+// \u{2600}-\u{26FF} Miscellaneous Symbols
+// \u{2700}-\u{27BF} Dingbats
+// \u{2B00}-\u{2BFF} Miscellaneous Symbols and Arrows
+// \u{1F300}-\u{1F5FF} Miscellaneous Symbols and Pictographs
+// there probably need to be more in the combination with the emoji variant selector
+const DoubleWidthRegExp = /[\p{Emoji_Presentation}\u{1F300}-\u{1F5FF}]\u{FE0F}?|[#\u{2300}-\u{23FF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}]\u{FE0F}|[\u{3040}-\u{A4CF}\u{AC00}-\u{D7FF}\u{20000}-\u{323AF}\u{FF01}-\u{FF60}\u{FFE0}-\u{FFE6}\0\r\v\f]/gu;
 
 const SurrogatePairRegExp = /[\u{D800}-\u{10FFFF}]/gu;
 
 const ControlRegExp = /\p{Control}/gu;
 
-const CharReplacement = {
+const CharReplacement: {[key: string]: string} = {
     '\0': '\\0',
     '\r': '\\r', // '^M',
     '\v': '\\v', // '^K',
