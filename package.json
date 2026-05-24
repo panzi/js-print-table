@@ -12,8 +12,9 @@
   },
   "scripts": {
     "tsc": "tsc",
-    "build:examples": "rm -r build 2>/dev/null; tsc && chmod a+x ./build/examples/*.js",
-    "build:release": "rm -r build 2>/dev/null; set -eo pipefail; trap 'rm tsconfig-release.json' EXIT; jq < tsconfig.json '.include = [\"./src/**/*.ts\"]' > tsconfig-release.json && tsc -p tsconfig-release.json",
+    "clean": "rm -rf build",
+    "build:examples": "tsc -p examples/tsconfig.json && chmod a+x ./build/examples/*.js",
+    "build:release": "tsc -p tsconfig.json",
     "build:doc": "typedoc src/index.ts && cp -r screenshot.png doc-src/* docs/"
   },
   "keywords": [
@@ -24,8 +25,8 @@
   "author": "Mathias Panzenböck",
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "^20.1.3",
-    "typedoc": "^0.24.7",
-    "typescript": "^5.0.4"
+    "@types/node": "^25.9.1",
+    "typedoc": "^0.28.19",
+    "typescript": "^6.0.3"
   }
 }

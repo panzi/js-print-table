@@ -1,7 +1,7 @@
 {
     "compilerOptions": {
       "target": "es2024",
-      "typeRoots": ["./node_modules/@types"],
+      "typeRoots": ["../node_modules/@types"],
       "types": ["node"],
       "allowSyntheticDefaultImports": true,
       "experimentalDecorators": true,
@@ -9,8 +9,8 @@
       "forceConsistentCasingInFileNames": true,
       "pretty": true,
       "sourceMap": true,
-      "outDir": "./build",
-      "rootDir": "./src",
+      "outDir": "../build",
+      "rootDir": "..",
       "allowJs": false,
       "noEmit": false,
       "esModuleInterop": true,
@@ -21,6 +21,6 @@
       "noUnusedLocals": true,
       "alwaysStrict": true
     },
-    "include": ["./src/**/*"],
+    "include": ["./**/*"],
     "exclude": ["node_modules"]
 }
