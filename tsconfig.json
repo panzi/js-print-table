@@ -19,7 +19,8 @@
       "strictPropertyInitialization": true,
       "useUnknownInCatchVariables": true,
       "noUnusedLocals": true,
-      "alwaysStrict": true
+      "alwaysStrict": true,
+      "declaration": true
     },
     "include": ["./src/**/*"],
     "exclude": ["node_modules"]
